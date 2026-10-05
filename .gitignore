@@ -13,3 +13,5 @@ results/*
 tmp/
 # contains private correspondence; keep local unless the repo is private
 docs/chatgpt_conversation_summary.md
+# personal todo list
+TODO.md
