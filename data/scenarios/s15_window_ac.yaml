@@ -1,0 +1,121 @@
+id: s15_window_ac
+name: Summer house - windows, AC and rain
+description: Air conditioning, windows, and a rain sensor near the garden sprinkler.
+rooms: [living_room, garden, bedroom]
+devices:
+  - id: ac_living
+    type: air_conditioner
+    room: living_room
+    description: Living room AC
+    states: {mode: [cool, off]}
+  - id: window_living
+    type: window_actuator
+    room: living_room
+    description: Motorised living room window
+    states: {position: [open, closed]}
+  - id: sprinkler
+    type: sprinkler
+    room: garden
+    description: Lawn sprinkler next to the terrace
+    states: {watering: [on, off]}
+  - id: skylight
+    type: skylight_actuator
+    room: bedroom
+    description: Motorised bedroom skylight
+    states: {position: [open, closed]}
+  - id: window_bedroom
+    type: window_actuator
+    room: bedroom
+    description: Bedroom window
+    states: {position: [open, closed]}
+environment:
+  - id: temp_living
+    room: living_room
+    kind: numeric
+    description: Living room temperature (C)
+  - id: rain_sensor
+    room: garden
+    kind: boolean
+    description: Rain sensor mounted on the terrace
+  - id: co2_bedroom
+    room: bedroom
+    kind: numeric
+    description: Bedroom CO2 concentration (ppm)
+effects:
+  - source: window_living.position
+    when: open
+    target: temp_living
+    effect: increase
+    kind: environmental
+    description: In summer an open window lets hot outdoor air in
+  - source: ac_living.mode
+    when: cool
+    target: temp_living
+    effect: decrease
+    kind: environmental
+    description: The AC cools the room
+  - source: sprinkler.watering
+    when: on
+    target: rain_sensor
+    effect: set
+    value: true
+    kind: environmental
+    description: The sprinkler spray wets the terrace rain sensor
+  - source: window_bedroom.position
+    when: open
+    target: co2_bedroom
+    effect: decrease
+    kind: environmental
+    description: Fresh air lowers CO2
+rules:
+  - id: R1
+    text: When the living room is warmer than 27 C, turn on AC cooling.
+    trigger: {type: env, ref: temp_living, op: ">", value: 27}
+    actions: [{ref: ac_living.mode, value: cool}]
+  - id: R2
+    text: At 10:00 open the living room window for fresh air.
+    trigger: {type: time, at: "10:00"}
+    actions: [{ref: window_living.position, value: open}]
+  - id: R3
+    text: At 14:00 water the lawn.
+    trigger: {type: time, at: "14:00"}
+    actions: [{ref: sprinkler.watering, value: on}]
+  - id: R4
+    text: When rain is detected, close the bedroom skylight.
+    trigger: {type: env, ref: rain_sensor, value: true}
+    actions: [{ref: skylight.position, value: closed}]
+  - id: R5
+    text: When bedroom CO2 exceeds 1200 ppm, open the bedroom window.
+    trigger: {type: env, ref: co2_bedroom, op: ">", value: 1200}
+    actions: [{ref: window_bedroom.position, value: open}]
+  - id: R6
+    text: When the AC starts cooling, close the living room window.
+    trigger: {type: state, ref: ac_living.mode, value: cool}
+    actions: [{ref: window_living.position, value: closed}]
+cases:
+  - id: s15_c1
+    rules: [R1, R2]
+    label: conflict
+    type: semantic
+    justification: The open window heats the room above 27 C, so the AC runs against an open window.
+    key_nodes: [window_living, temp_living]
+  - id: s15_c2
+    rules: [R3, R4]
+    label: conflict
+    type: semantic
+    justification: The sprinkler wets the rain sensor, closing the skylight on a sunny day (false rain).
+    key_nodes: [sprinkler, rain_sensor]
+  - id: s15_c3
+    rules: [R5, R4]
+    label: clean
+    justification: Opening the bedroom window for CO2 does not affect the rain sensor; window and skylight are different devices.
+  - id: s15_c4
+    rules: [R5, R1]
+    label: clean
+    justification: The bedroom window does not affect living room temperature.
+  - id: s15_c5
+    rules: [R2, R6]
+    label: conflict
+    type: logical
+    justification: On a hot morning the AC is cooling at 10:00; R2 opens the window and R6 closes it again.
+    key_nodes: [window_living]

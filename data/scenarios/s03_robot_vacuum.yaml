@@ -1,0 +1,82 @@
+id: s03_robot_vacuum
+name: Suburban house - robot vacuum and presence routines
+description: Robot vacuum cleaning the ground floor while presence routines control lock and alarm.
+rooms: [living_room, entrance, bedroom, home]
+devices:
+  - id: vacuum
+    type: robot_vacuum
+    room: living_room
+    description: Robot vacuum with docking station
+    states: {mode: [cleaning, docked]}
+  - id: lock_entrance
+    type: smart_lock
+    room: entrance
+    description: Entrance door smart lock
+    states: {lock: [locked, unlocked]}
+  - id: alarm
+    type: alarm_siren
+    room: entrance
+    description: Indoor siren
+    states: {siren: [on, off]}
+  - id: light_entrance
+    type: light
+    room: entrance
+    description: Entrance ceiling light
+    states: {power: [on, off]}
+environment:
+  - id: motion_living
+    room: living_room
+    kind: boolean
+    description: Living room PIR motion sensor
+  - id: motion_bedroom
+    room: bedroom
+    kind: boolean
+    description: Bedroom PIR motion sensor
+  - id: home_mode
+    room: home
+    kind: categorical
+    values: [home, away, night]
+    description: Household mode
+effects:
+  - source: vacuum.mode
+    when: cleaning
+    target: motion_living
+    effect: set
+    value: true
+    kind: environmental
+    description: The moving vacuum is detected by the living room motion sensor
+rules:
+  - id: R1
+    text: At 10:00 on weekdays start the robot vacuum.
+    trigger: {type: time, at: "10:00"}
+    actions: [{ref: vacuum.mode, value: cleaning}]
+  - id: R2
+    text: When motion is detected in the living room, unlock the entrance door (someone is home).
+    trigger: {type: env, ref: motion_living, value: true}
+    actions: [{ref: lock_entrance.lock, value: unlocked}]
+  - id: R3
+    text: When motion is detected in the living room while the home is in away mode, sound the alarm.
+    trigger: {type: env, ref: motion_living, value: true}
+    conditions: [{type: env, ref: home_mode, value: away}]
+    actions: [{ref: alarm.siren, value: on}]
+  - id: R4
+    text: When motion is detected in the bedroom, turn on the entrance light.
+    trigger: {type: env, ref: motion_bedroom, value: true}
+    actions: [{ref: light_entrance.power, value: on}]
+cases:
+  - id: s03_c1
+    rules: [R1, R2]
+    label: conflict
+    type: semantic
+    justification: The vacuum triggers the living room motion sensor, so R2 unlocks the door while nobody is home.
+    key_nodes: [vacuum, motion_living]
+  - id: s03_c2
+    rules: [R1, R3]
+    label: conflict
+    type: semantic
+    justification: When the vacuum runs during away mode its motion sets off the alarm (false alarm).
+    key_nodes: [vacuum, motion_living]
+  - id: s03_c3
+    rules: [R1, R4]
+    label: clean
+    justification: The vacuum cleans the living room; the bedroom motion sensor is not affected.

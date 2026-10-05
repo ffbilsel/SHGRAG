@@ -1,0 +1,103 @@
+id: s12_garage_ev
+name: House with garage - EV charging and garage door
+description: EV charger, garage door, and a garage ventilation fan on a shared circuit.
+rooms: [garage, home]
+devices:
+  - id: garage_door
+    type: garage_door_opener
+    room: garage
+    description: Motorised garage door
+    states: {position: [open, closed]}
+  - id: ev_charger
+    type: ev_charger
+    room: garage
+    description: Wall-box EV charger
+    states: {charging: [on, off]}
+  - id: breaker_garage
+    type: smart_breaker
+    room: garage
+    description: Smart circuit breaker for the garage circuit
+    states: {power: [on, off]}
+  - id: fan_garage
+    type: ventilation_fan
+    room: garage
+    description: Garage exhaust fan
+    states: {power: [on, off]}
+  - id: light_garage
+    type: light
+    room: garage
+    description: Garage ceiling light
+    states: {power: [on, off]}
+environment:
+  - id: home_mode
+    room: home
+    kind: categorical
+    values: [home, away, night]
+    description: Household mode
+  - id: co_garage
+    room: garage
+    kind: boolean
+    description: Garage carbon monoxide detector
+  - id: car_present
+    room: garage
+    kind: boolean
+    description: Car presence sensor
+effects:
+  - source: breaker_garage.power
+    when: off
+    target: ev_charger.charging
+    effect: set
+    value: off
+    kind: physical
+    description: The EV charger is on the garage circuit
+  - source: breaker_garage.power
+    when: off
+    target: fan_garage.power
+    effect: set
+    value: off
+    kind: physical
+    description: The exhaust fan is on the garage circuit
+rules:
+  - id: R1
+    text: When the home switches to away mode, switch off the garage circuit breaker.
+    trigger: {type: env, ref: home_mode, value: away}
+    actions: [{ref: breaker_garage.power, value: off}]
+  - id: R2
+    text: When carbon monoxide is detected in the garage, turn on the exhaust fan and open the garage door.
+    trigger: {type: env, ref: co_garage, value: true}
+    actions: [{ref: fan_garage.power, value: on}, {ref: garage_door.position, value: open}]
+  - id: R3
+    text: When the home switches to away mode, close the garage door.
+    trigger: {type: env, ref: home_mode, value: away}
+    actions: [{ref: garage_door.position, value: closed}]
+  - id: R4
+    text: When the car is parked in the garage, start EV charging.
+    trigger: {type: env, ref: car_present, value: true}
+    actions: [{ref: ev_charger.charging, value: on}]
+  - id: R5
+    text: When the car is parked in the garage, turn on the garage light.
+    trigger: {type: env, ref: car_present, value: true}
+    actions: [{ref: light_garage.power, value: on}]
+cases:
+  - id: s12_c1
+    rules: [R1, R2]
+    label: conflict
+    type: physical
+    justification: With the garage circuit off while away, the CO response cannot start the exhaust fan (safety function lost).
+    key_nodes: [breaker_garage, fan_garage]
+  - id: s12_c2
+    rules: [R2, R3]
+    label: conflict
+    type: logical
+    justification: A CO event while switching to away mode makes R2 open and R3 close the garage door.
+    key_nodes: [garage_door]
+  - id: s12_c3
+    rules: [R1, R4]
+    label: conflict
+    type: physical
+    justification: The car parked before leaving cannot charge because the breaker cuts the charger circuit when away.
+    key_nodes: [breaker_garage, ev_charger]
+  - id: s12_c4
+    rules: [R4, R5]
+    label: clean
+    justification: Charging and turning on the light when the car arrives are independent.

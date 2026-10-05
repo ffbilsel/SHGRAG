@@ -1,0 +1,100 @@
+id: s16_server_closet
+name: Home lab - server closet cooling
+description: A NAS and a cooling fan share a power strip in a small closet.
+rooms: [closet, office, home]
+devices:
+  - id: strip_closet
+    type: smart_power_strip
+    room: closet
+    description: Smart power strip in the closet
+    states: {power: [on, off]}
+  - id: nas
+    type: network_storage
+    room: closet
+    description: Network attached storage
+    states: {power: [on, off], backup: [running, idle]}
+  - id: fan_closet
+    type: ventilation_fan
+    room: closet
+    description: Closet cooling fan
+    states: {power: [on, off]}
+  - id: plug_printer
+    type: smart_plug
+    room: office
+    description: Printer smart plug
+    states: {power: [on, off]}
+environment:
+  - id: temp_closet
+    room: closet
+    kind: numeric
+    description: Closet temperature (C)
+  - id: home_mode
+    room: home
+    kind: categorical
+    values: [home, away, night]
+    description: Household mode
+effects:
+  - source: strip_closet.power
+    when: off
+    target: nas.power
+    effect: set
+    value: off
+    kind: physical
+    description: The NAS is plugged into the closet strip
+  - source: strip_closet.power
+    when: off
+    target: fan_closet.power
+    effect: set
+    value: off
+    kind: physical
+    description: The cooling fan is plugged into the closet strip
+  - source: nas.backup
+    when: running
+    target: temp_closet
+    effect: increase
+    kind: environmental
+    description: Backup jobs load the disks and heat the closet
+  - source: fan_closet.power
+    when: on
+    target: temp_closet
+    effect: decrease
+    kind: environmental
+    description: The fan cools the closet
+rules:
+  - id: R1
+    text: At 01:00 start the nightly NAS backup.
+    trigger: {type: time, at: "01:00"}
+    actions: [{ref: nas.backup, value: running}]
+  - id: R2
+    text: When the home switches to night mode, turn off the closet power strip.
+    trigger: {type: env, ref: home_mode, value: night}
+    actions: [{ref: strip_closet.power, value: off}]
+  - id: R3
+    text: When the closet is warmer than 35 C, turn on the cooling fan.
+    trigger: {type: env, ref: temp_closet, op: ">", value: 35}
+    actions: [{ref: fan_closet.power, value: on}]
+  - id: R4
+    text: When the home switches to night mode, turn off the printer plug.
+    trigger: {type: env, ref: home_mode, value: night}
+    actions: [{ref: plug_printer.power, value: off}]
+cases:
+  - id: s16_c1
+    rules: [R2, R1]
+    label: conflict
+    type: physical
+    justification: The closet strip powers the NAS; cutting it in night mode kills the 01:00 backup.
+    key_nodes: [strip_closet, nas]
+  - id: s16_c2
+    rules: [R2, R3]
+    label: conflict
+    type: physical
+    justification: The cooling fan is on the same strip, so overheating protection cannot work at night.
+    key_nodes: [strip_closet, fan_closet]
+  - id: s16_c3
+    rules: [R1, R3]
+    label: clean
+    justification: The backup heats the closet and the fan responds as intended - a designed feedback loop.
+  - id: s16_c4
+    rules: [R4, R1]
+    label: clean
+    justification: The printer plug is unrelated to the NAS.

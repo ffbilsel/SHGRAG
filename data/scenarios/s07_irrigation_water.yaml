@@ -1,0 +1,89 @@
+id: s07_irrigation_water
+name: Detached house - irrigation and leak protection
+description: Main water valve closes on leaks or when away; garden irrigation and washing machine depend on water supply.
+rooms: [garden, utility_room, home]
+devices:
+  - id: valve_main
+    type: water_valve
+    room: utility_room
+    description: Motorised main water shut-off valve
+    states: {state: [open, closed]}
+  - id: irrigation
+    type: irrigation_controller
+    room: garden
+    description: Garden sprinkler controller
+    states: {watering: [on, off], flow: [on, off]}
+  - id: washer
+    type: washing_machine
+    room: utility_room
+    description: Connected washing machine
+    states: {program: [running, idle]}
+  - id: valve_garden
+    type: water_valve
+    room: garden
+    description: Separate valve on the outdoor tap line
+    states: {state: [open, closed]}
+environment:
+  - id: leak_utility
+    room: utility_room
+    kind: boolean
+    description: Leak sensor under the washing machine
+  - id: home_mode
+    room: home
+    kind: categorical
+    values: [home, away, night]
+    description: Household mode
+  - id: soil_moisture
+    room: garden
+    kind: numeric
+    description: Garden soil moisture (%)
+effects:
+  - source: valve_main.state
+    when: closed
+    target: irrigation.flow
+    effect: set
+    value: off
+    kind: physical
+    description: The irrigation line is supplied through the main water valve
+  - source: irrigation.watering
+    when: on
+    target: soil_moisture
+    effect: increase
+    kind: environmental
+    description: Watering raises soil moisture
+rules:
+  - id: R1
+    text: When the home switches to away mode, close the main water valve.
+    trigger: {type: env, ref: home_mode, value: away}
+    actions: [{ref: valve_main.state, value: closed}]
+  - id: R2
+    text: At 06:00 every day start watering the garden.
+    trigger: {type: time, at: "06:00"}
+    actions: [{ref: irrigation.watering, value: on}, {ref: irrigation.flow, value: on}]
+  - id: R3
+    text: When a leak is detected in the utility room, close the main water valve.
+    trigger: {type: env, ref: leak_utility, value: true}
+    actions: [{ref: valve_main.state, value: closed}]
+  - id: R4
+    text: When the soil moisture is above 60 %, stop watering.
+    trigger: {type: env, ref: soil_moisture, op: ">", value: 60}
+    actions: [{ref: irrigation.watering, value: off}]
+  - id: R5
+    text: When the home switches to away mode, close the outdoor tap valve.
+    trigger: {type: env, ref: home_mode, value: away}
+    actions: [{ref: valve_garden.state, value: closed}]
+cases:
+  - id: s07_c1
+    rules: [R1, R2]
+    label: conflict
+    type: physical
+    justification: With the main valve closed during vacations the 06:00 irrigation has no water supply - plants are not watered.
+    key_nodes: [valve_main, irrigation]
+  - id: s07_c2
+    rules: [R2, R4]
+    label: clean
+    justification: Stopping irrigation when the soil is wet is the intended feedback loop.
+  - id: s07_c3
+    rules: [R5, R2]
+    label: clean
+    justification: The outdoor tap valve is a separate line and does not feed the irrigation controller.

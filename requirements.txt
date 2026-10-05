@@ -1,0 +1,7 @@
+anthropic>=1.11
+networkx>=3.2
+pydantic>=2.6
+pyyaml>=6.0
+matplotlib>=3.8
+streamlit>=1.35
+pytest>=8

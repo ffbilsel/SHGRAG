@@ -1,0 +1,96 @@
+id: s13_pet_feeder
+name: Apartment with cat - pet devices and security
+description: Automatic pet feeder and litter box interact with motion-based security while the owner is away.
+rooms: [kitchen, living_room, bathroom, home]
+devices:
+  - id: feeder
+    type: pet_feeder
+    room: kitchen
+    description: Automatic cat feeder
+    states: {dispensing: [on, off]}
+  - id: alarm
+    type: alarm_siren
+    room: living_room
+    description: Indoor siren
+    states: {siren: [on, off]}
+  - id: camera_kitchen
+    type: camera
+    room: kitchen
+    description: Kitchen camera
+    states: {recording: [on, off]}
+  - id: litter_box
+    type: self_cleaning_litter_box
+    room: bathroom
+    description: Self-cleaning litter box
+    states: {cleaning: [on, off]}
+environment:
+  - id: motion_kitchen
+    room: kitchen
+    kind: boolean
+    description: Kitchen motion sensor
+  - id: motion_living
+    room: living_room
+    kind: boolean
+    description: Living room motion sensor
+  - id: home_mode
+    room: home
+    kind: categorical
+    values: [home, away, night]
+    description: Household mode
+effects:
+  - source: feeder.dispensing
+    when: on
+    target: motion_kitchen
+    effect: set
+    value: true
+    kind: environmental
+    description: The cat runs to the feeder when food is dispensed, triggering the kitchen motion sensor
+rules:
+  - id: R1
+    text: At 12:00 dispense food for the cat.
+    trigger: {type: time, at: "12:00"}
+    actions: [{ref: feeder.dispensing, value: on}]
+  - id: R2
+    text: When motion is detected in the kitchen while the home is in away mode, sound the alarm.
+    trigger: {type: env, ref: motion_kitchen, value: true}
+    conditions: [{type: env, ref: home_mode, value: away}]
+    actions: [{ref: alarm.siren, value: on}]
+  - id: R3
+    text: When motion is detected in the kitchen, start recording on the kitchen camera.
+    trigger: {type: env, ref: motion_kitchen, value: true}
+    actions: [{ref: camera_kitchen.recording, value: on}]
+  - id: R4
+    text: At 12:00 start the litter box cleaning cycle.
+    trigger: {type: time, at: "12:00"}
+    actions: [{ref: litter_box.cleaning, value: on}]
+  - id: R5
+    text: When motion is detected in the living room while the home is in away mode, sound the alarm.
+    trigger: {type: env, ref: motion_living, value: true}
+    conditions: [{type: env, ref: home_mode, value: away}]
+    actions: [{ref: alarm.siren, value: on}]
+  - id: R6
+    text: When motion is detected in the kitchen while the home is in home mode, stop recording on the kitchen camera for privacy.
+    trigger: {type: env, ref: motion_kitchen, value: true}
+    conditions: [{type: env, ref: home_mode, value: home}]
+    actions: [{ref: camera_kitchen.recording, value: off}]
+cases:
+  - id: s13_c1
+    rules: [R1, R2]
+    label: conflict
+    type: semantic
+    justification: Feeding attracts the cat into the kitchen; its motion sets off the away-mode alarm every noon.
+    key_nodes: [feeder, motion_kitchen]
+  - id: s13_c2
+    rules: [R1, R3]
+    label: clean
+    justification: Recording the cat eating is harmless and arguably intended.
+  - id: s13_c3
+    rules: [R4, R5]
+    label: clean
+    justification: The litter box is in the bathroom; it does not affect the living room motion sensor.
+  - id: s13_c4
+    rules: [R3, R6]
+    label: conflict
+    type: logical
+    justification: Kitchen motion while at home makes R3 start and R6 stop camera recording at the same time.
+    key_nodes: [camera_kitchen]

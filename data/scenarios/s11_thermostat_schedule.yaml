@@ -1,0 +1,77 @@
+id: s11_thermostat_schedule
+name: Shared flat - competing thermostat schedules
+description: Two flatmates created thermostat and AC routines independently.
+rooms: [living_room, home]
+devices:
+  - id: thermostat
+    type: thermostat
+    room: living_room
+    description: Central heating thermostat
+    states: {setpoint: [], mode: [heat, eco, off]}
+  - id: ac_living
+    type: air_conditioner
+    room: living_room
+    description: Split air conditioner
+    states: {mode: [cool, heat, off]}
+environment:
+  - id: home_mode
+    room: home
+    kind: categorical
+    values: [home, away, night]
+    description: Household mode
+  - id: temp_living
+    room: living_room
+    kind: numeric
+    description: Living room temperature (C)
+effects:
+  - source: ac_living.mode
+    when: cool
+    target: temp_living
+    effect: decrease
+    kind: environmental
+    description: Cooling lowers the room temperature
+  - source: thermostat.mode
+    when: heat
+    target: temp_living
+    effect: increase
+    kind: environmental
+    description: Radiator heating raises the room temperature
+rules:
+  - id: R1
+    text: At 18:00 set the thermostat to 23 C.
+    trigger: {type: time, at: "18:00"}
+    actions: [{ref: thermostat.setpoint, value: 23}, {ref: thermostat.mode, value: heat}]
+  - id: R2
+    text: When someone arrives home between 17:00 and 19:00, set the thermostat to 19 C (eco).
+    trigger: {type: env, ref: home_mode, value: home}
+    conditions: [{type: time_range, start: "17:00", end: "19:00"}]
+    actions: [{ref: thermostat.setpoint, value: 19}, {ref: thermostat.mode, value: eco}]
+  - id: R3
+    text: When the living room is warmer than 24 C, switch the air conditioner to cooling.
+    trigger: {type: env, ref: temp_living, op: ">", value: 24}
+    actions: [{ref: ac_living.mode, value: cool}]
+  - id: R4
+    text: When the living room is colder than 20 C, set the thermostat to heat.
+    trigger: {type: env, ref: temp_living, op: "<", value: 20}
+    actions: [{ref: thermostat.mode, value: heat}]
+  - id: R5
+    text: At 08:00 set the thermostat to eco mode.
+    trigger: {type: time, at: "08:00"}
+    actions: [{ref: thermostat.mode, value: eco}]
+cases:
+  - id: s11_c1
+    rules: [R1, R2]
+    label: conflict
+    type: logical
+    justification: Around 18:00 both rules write different setpoints and modes to the same thermostat.
+    key_nodes: [thermostat]
+  - id: s11_c2
+    rules: [R3, R4]
+    label: conflict
+    type: semantic
+    justification: AC cooling drives the temperature below 20 C, which makes R4 start heating - the systems fight each other.
+    key_nodes: [ac_living, temp_living]
+  - id: s11_c3
+    rules: [R1, R5]
+    label: clean
+    justification: Heat at 18:00 and eco at 08:00 is a normal daily schedule.

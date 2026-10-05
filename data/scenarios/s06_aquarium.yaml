@@ -1,0 +1,110 @@
+id: s06_aquarium
+name: Studio flat - aquarium and night energy saving
+description: An aquarium pump and heater share a power strip that energy-saving routines switch off.
+rooms: [living_room, home]
+devices:
+  - id: strip_living
+    type: smart_power_strip
+    room: living_room
+    description: Smart power strip behind the TV cabinet
+    states: {power: [on, off]}
+  - id: aquarium_pump
+    type: water_pump
+    room: living_room
+    description: Aquarium filter and oxygen pump
+    states: {power: [on, off]}
+  - id: aquarium_heater
+    type: water_heater
+    room: living_room
+    description: Aquarium water heater
+    states: {power: [on, off]}
+  - id: tv
+    type: television
+    room: living_room
+    description: Smart TV
+    states: {power: [on, off]}
+  - id: plug_tv
+    type: smart_plug
+    room: living_room
+    description: Smart plug next to the TV
+    states: {power: [on, off]}
+environment:
+  - id: water_temp
+    room: living_room
+    kind: numeric
+    description: Aquarium water temperature (C)
+  - id: home_mode
+    room: home
+    kind: categorical
+    values: [home, away, night]
+    description: Household mode
+effects:
+  - source: strip_living.power
+    when: off
+    target: aquarium_pump.power
+    effect: set
+    value: off
+    kind: physical
+    description: The aquarium pump is plugged into the living room power strip
+  - source: strip_living.power
+    when: off
+    target: aquarium_heater.power
+    effect: set
+    value: off
+    kind: physical
+    description: The aquarium heater is plugged into the living room power strip
+  - source: plug_tv.power
+    when: off
+    target: tv.power
+    effect: set
+    value: off
+    kind: physical
+    description: The TV is plugged into the TV smart plug
+  - source: aquarium_heater.power
+    when: on
+    target: water_temp
+    effect: increase
+    kind: environmental
+    description: The heater warms the aquarium water
+rules:
+  - id: R1
+    text: When the home switches to night mode, turn off the living room power strip to eliminate standby consumption.
+    trigger: {type: env, ref: home_mode, value: night}
+    actions: [{ref: strip_living.power, value: off}]
+  - id: R2
+    text: When the aquarium water temperature falls below 24 C, turn on the aquarium heater.
+    trigger: {type: env, ref: water_temp, op: "<", value: 24}
+    actions: [{ref: aquarium_heater.power, value: on}]
+  - id: R3
+    text: When the home switches to night mode, turn off the TV plug.
+    trigger: {type: env, ref: home_mode, value: night}
+    actions: [{ref: plug_tv.power, value: off}]
+  - id: R4
+    text: When the aquarium water temperature rises above 28 C, turn off the aquarium heater.
+    trigger: {type: env, ref: water_temp, op: ">", value: 28}
+    actions: [{ref: aquarium_heater.power, value: off}]
+  - id: R5
+    text: When the home switches to night mode, turn off the aquarium heater to keep the room quiet.
+    trigger: {type: env, ref: home_mode, value: night}
+    actions: [{ref: aquarium_heater.power, value: off}]
+cases:
+  - id: s06_c1
+    rules: [R1, R2]
+    label: conflict
+    type: physical
+    justification: The power strip feeds the aquarium heater; cutting it at night defeats R2's temperature protection.
+    key_nodes: [strip_living, aquarium_heater]
+  - id: s06_c2
+    rules: [R3, R2]
+    label: clean
+    justification: The TV plug only powers the TV, not the aquarium equipment.
+  - id: s06_c3
+    rules: [R2, R4]
+    label: clean
+    justification: Thermostat-style hysteresis with non-overlapping thresholds (below 24 on, above 28 off) is intended.
+  - id: s06_c4
+    rules: [R5, R2]
+    label: conflict
+    type: logical
+    justification: At night R5 switches the aquarium heater off while R2 switches it on whenever the water is cold.
+    key_nodes: [aquarium_heater]

@@ -1,0 +1,101 @@
+id: s05_router_dependency
+name: Home office - network dependency chain
+description: The Wi-Fi router sits on a smart plug; cloud cameras and the doorbell depend on the network.
+rooms: [office, entrance, garden, home]
+devices:
+  - id: plug_office
+    type: smart_plug
+    room: office
+    description: Smart plug under the desk
+    states: {power: [on, off]}
+  - id: router
+    type: wifi_router
+    room: office
+    description: Home Wi-Fi router
+    states: {power: [on, off]}
+  - id: camera_garden
+    type: camera
+    room: garden
+    description: Outdoor Wi-Fi camera with cloud recording
+    states: {cloud_upload: [on, off], recording: [on, off]}
+  - id: doorbell
+    type: video_doorbell
+    room: entrance
+    description: Wi-Fi video doorbell
+    states: {notifications: [on, off]}
+  - id: monitor_office
+    type: monitor
+    room: office
+    description: Desk monitor
+    states: {power: [on, off]}
+  - id: plug_desk_lamp
+    type: smart_plug
+    room: office
+    description: Smart plug for the desk lamp
+    states: {power: [on, off]}
+environment:
+  - id: home_mode
+    room: home
+    kind: categorical
+    values: [home, away, night]
+    description: Household mode
+effects:
+  - source: plug_office.power
+    when: off
+    target: router.power
+    effect: set
+    value: off
+    kind: physical
+    description: The router is plugged into the office smart plug
+  - source: router.power
+    when: off
+    target: camera_garden.cloud_upload
+    effect: set
+    value: off
+    kind: physical
+    description: The garden camera uploads recordings over Wi-Fi
+  - source: router.power
+    when: off
+    target: doorbell.notifications
+    effect: set
+    value: off
+    kind: physical
+    description: Doorbell notifications are delivered over Wi-Fi
+rules:
+  - id: R1
+    text: At 00:30 turn off the office plug (standby power saving).
+    trigger: {type: time, at: "00:30"}
+    actions: [{ref: plug_office.power, value: off}]
+  - id: R2
+    text: When the home is in night mode, enable cloud upload on the garden camera.
+    trigger: {type: env, ref: home_mode, value: night}
+    actions: [{ref: camera_garden.cloud_upload, value: on}, {ref: camera_garden.recording, value: on}]
+  - id: R3
+    text: When the home switches to away mode, enable doorbell notifications.
+    trigger: {type: env, ref: home_mode, value: away}
+    actions: [{ref: doorbell.notifications, value: on}]
+  - id: R4
+    text: At 00:30 turn off the desk lamp plug.
+    trigger: {type: time, at: "00:30"}
+    actions: [{ref: plug_desk_lamp.power, value: off}]
+cases:
+  - id: s05_c1
+    rules: [R1, R2]
+    label: conflict
+    type: physical
+    justification: Turning off the office plug kills the router, so the garden camera cannot upload during the night (two-hop dependency).
+    key_nodes: [plug_office, router, camera_garden]
+  - id: s05_c2
+    rules: [R1, R3]
+    label: conflict
+    type: physical
+    justification: Without the router, doorbell notifications cannot be delivered while away.
+    key_nodes: [router, doorbell]
+  - id: s05_c3
+    rules: [R4, R2]
+    label: clean
+    justification: The desk lamp plug powers only the lamp; the network stays up.
+  - id: s05_c4
+    rules: [R4, R3]
+    label: clean
+    justification: The desk lamp plug is unrelated to the doorbell.

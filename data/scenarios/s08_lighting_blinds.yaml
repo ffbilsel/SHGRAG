@@ -1,0 +1,95 @@
+id: s08_lighting_blinds
+name: Townhouse - daylight, blinds and lights
+description: Daylight-driven blinds and lights in the living room and study.
+rooms: [living_room, study]
+devices:
+  - id: blinds_living
+    type: motorised_blinds
+    room: living_room
+    description: Living room roller blinds
+    states: {position: [open, closed]}
+  - id: lights_living
+    type: light
+    room: living_room
+    description: Living room ceiling lights
+    states: {power: [on, off]}
+  - id: lights_study
+    type: light
+    room: study
+    description: Study desk light
+    states: {power: [on, off]}
+  - id: blinds_study
+    type: motorised_blinds
+    room: study
+    description: Study blinds
+    states: {position: [open, closed]}
+environment:
+  - id: lux_living
+    room: living_room
+    kind: numeric
+    description: Living room illuminance (lux)
+  - id: lux_study
+    room: study
+    kind: numeric
+    description: Study illuminance (lux)
+effects:
+  - source: blinds_living.position
+    when: closed
+    target: lux_living
+    effect: decrease
+    kind: environmental
+    description: Closed blinds block daylight
+  - source: lights_living.power
+    when: on
+    target: lux_living
+    effect: increase
+    kind: environmental
+    description: Ceiling lights raise the illuminance measured by the sensor
+  - source: blinds_study.position
+    when: closed
+    target: lux_study
+    effect: decrease
+    kind: environmental
+    description: Closed blinds darken the study
+rules:
+  - id: R1
+    text: When the living room is brighter than 800 lux, close the blinds to reduce glare.
+    trigger: {type: env, ref: lux_living, op: ">", value: 800}
+    actions: [{ref: blinds_living.position, value: closed}]
+  - id: R2
+    text: When the living room is darker than 150 lux, turn on the ceiling lights.
+    trigger: {type: env, ref: lux_living, op: "<", value: 150}
+    actions: [{ref: lights_living.power, value: on}]
+  - id: R3
+    text: At 07:30 open the living room blinds.
+    trigger: {type: time, at: "07:30"}
+    actions: [{ref: blinds_living.position, value: open}]
+  - id: R4
+    text: At 22:00 close the living room blinds.
+    trigger: {type: time, at: "22:00"}
+    actions: [{ref: blinds_living.position, value: closed}]
+  - id: R5
+    text: When the study is darker than 150 lux, turn on the study desk light.
+    trigger: {type: env, ref: lux_study, op: "<", value: 150}
+    actions: [{ref: lights_study.power, value: on}]
+cases:
+  - id: s08_c1
+    rules: [R1, R2]
+    label: conflict
+    type: semantic
+    justification: Closing the blinds in bright daylight drops the light level and makes R2 switch the lights on during the day (wasted energy, oscillation).
+    key_nodes: [blinds_living, lux_living]
+  - id: s08_c2
+    rules: [R3, R4]
+    label: clean
+    justification: Opening at 07:30 and closing at 22:00 is a normal non-overlapping schedule.
+  - id: s08_c3
+    rules: [R1, R5]
+    label: clean
+    justification: Living room blinds do not affect the study light level.
+  - id: s08_c4
+    rules: [R3, R1]
+    label: conflict
+    type: logical
+    justification: On a bright morning R3 opens the blinds at 07:30 while R1 closes them because the room is already above 800 lux - the blinds fight each other.
+    key_nodes: [blinds_living]

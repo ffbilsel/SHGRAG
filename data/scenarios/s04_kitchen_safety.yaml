@@ -1,0 +1,77 @@
+id: s04_kitchen_safety
+name: Apartment kitchen - cooking and smoke safety
+description: Oven, range hood, smoke detector and a door lock that reacts to smoke.
+rooms: [kitchen, entrance, home]
+devices:
+  - id: oven
+    type: oven
+    room: kitchen
+    description: Connected electric oven
+    states: {power: [on, off]}
+  - id: hood
+    type: range_hood
+    room: kitchen
+    description: Kitchen extractor hood
+    states: {power: [on, off]}
+  - id: lock_door
+    type: smart_lock
+    room: entrance
+    description: Apartment door lock
+    states: {lock: [locked, unlocked]}
+  - id: hvac
+    type: hvac
+    room: home
+    description: Central air handler
+    states: {power: [on, off]}
+environment:
+  - id: smoke_kitchen
+    room: kitchen
+    kind: boolean
+    description: Kitchen smoke detector
+  - id: home_mode
+    room: home
+    kind: categorical
+    values: [home, away, night]
+    description: Household mode
+effects:
+  - source: hood.power
+    when: on
+    target: smoke_kitchen
+    effect: set
+    value: false
+    kind: environmental
+    description: The hood clears cooking fumes from the kitchen
+rules:
+  - id: R1
+    text: When smoke is detected in the kitchen, unlock the apartment door for evacuation and turn off the air handler.
+    trigger: {type: env, ref: smoke_kitchen, value: true}
+    actions: [{ref: lock_door.lock, value: unlocked}, {ref: hvac.power, value: off}]
+  - id: R2
+    text: When the home switches to away mode, lock the apartment door.
+    trigger: {type: env, ref: home_mode, value: away}
+    actions: [{ref: lock_door.lock, value: locked}]
+  - id: R3
+    text: When the oven is turned on, turn on the range hood.
+    trigger: {type: state, ref: oven.power, value: on}
+    actions: [{ref: hood.power, value: on}]
+  - id: R4
+    text: At 08:00 turn on the air handler.
+    trigger: {type: time, at: "08:00"}
+    actions: [{ref: hvac.power, value: on}]
+cases:
+  - id: s04_c1
+    rules: [R1, R2]
+    label: conflict
+    type: logical
+    justification: If smoke appears while the home is switched to away, R1 unlocks for evacuation while R2 locks the door.
+    key_nodes: [lock_door]
+  - id: s04_c2
+    rules: [R1, R4]
+    label: conflict
+    type: logical
+    justification: During a smoke event at 08:00 R4 re-enables the air handler that R1 shut down, spreading smoke.
+    key_nodes: [hvac]
+  - id: s04_c3
+    rules: [R3, R2]
+    label: clean
+    justification: Range hood control is unrelated to locking the door when leaving.

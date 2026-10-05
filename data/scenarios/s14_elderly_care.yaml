@@ -1,0 +1,90 @@
+id: s14_elderly_care
+name: Elderly resident - medical device and night routines
+description: A CPAP machine, night lights and a fall-detection routine in a senior's apartment.
+rooms: [bedroom, bathroom, corridor, home]
+devices:
+  - id: plug_bedside
+    type: smart_plug
+    room: bedroom
+    description: Bedside smart plug
+    states: {power: [on, off]}
+  - id: cpap
+    type: medical_device
+    room: bedroom
+    description: CPAP breathing machine
+    states: {power: [on, off]}
+  - id: nightlight_corridor
+    type: light
+    room: corridor
+    description: Corridor night light
+    states: {power: [on, off]}
+  - id: lock_entrance
+    type: smart_lock
+    room: corridor
+    description: Entrance door lock
+    states: {lock: [locked, unlocked]}
+  - id: plug_reading_lamp
+    type: smart_plug
+    room: bedroom
+    description: Plug for the reading lamp
+    states: {power: [on, off]}
+environment:
+  - id: home_mode
+    room: home
+    kind: categorical
+    values: [home, away, night]
+    description: Household mode
+  - id: fall_detected
+    room: bathroom
+    kind: boolean
+    description: Fall detection radar in the bathroom
+  - id: motion_corridor
+    room: corridor
+    kind: boolean
+    description: Corridor motion sensor
+effects:
+  - source: plug_bedside.power
+    when: off
+    target: cpap.power
+    effect: set
+    value: off
+    kind: physical
+    description: The CPAP machine is plugged into the bedside smart plug
+rules:
+  - id: R1
+    text: At 23:30 turn off the bedside plug (phone charger) to save energy.
+    trigger: {type: time, at: "23:30"}
+    actions: [{ref: plug_bedside.power, value: off}]
+  - id: R2
+    text: When the home switches to night mode, make sure the CPAP machine is on.
+    trigger: {type: env, ref: home_mode, value: night}
+    actions: [{ref: cpap.power, value: on}]
+  - id: R3
+    text: When a fall is detected, unlock the entrance door for paramedics.
+    trigger: {type: env, ref: fall_detected, value: true}
+    actions: [{ref: lock_entrance.lock, value: unlocked}]
+  - id: R4
+    text: When the home switches to night mode, lock the entrance door.
+    trigger: {type: env, ref: home_mode, value: night}
+    actions: [{ref: lock_entrance.lock, value: locked}]
+  - id: R5
+    text: At 23:30 turn off the reading lamp plug.
+    trigger: {type: time, at: "23:30"}
+    actions: [{ref: plug_reading_lamp.power, value: off}]
+cases:
+  - id: s14_c1
+    rules: [R1, R2]
+    label: conflict
+    type: physical
+    justification: The 'phone charger' plug actually powers the CPAP machine; switching it off at 23:30 stops a medical device.
+    key_nodes: [plug_bedside, cpap]
+  - id: s14_c2
+    rules: [R3, R4]
+    label: conflict
+    type: logical
+    justification: A fall during night mode needs the door unlocked while R4 keeps locking it.
+    key_nodes: [lock_entrance]
+  - id: s14_c3
+    rules: [R5, R2]
+    label: clean
+    justification: The reading lamp plug does not power the CPAP machine.

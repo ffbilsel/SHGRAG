@@ -1,0 +1,83 @@
+id: s19_tv_baby_monitor
+name: Family flat - noise and baby monitor
+description: Sound-triggered nursery routines and living room entertainment devices.
+rooms: [living_room, nursery, home]
+devices:
+  - id: soundbar
+    type: soundbar
+    room: living_room
+    description: Living room soundbar
+    states: {power: [on, off]}
+  - id: nursery_lamp
+    type: light
+    room: nursery
+    description: Nursery dimmable lamp
+    states: {power: [on, off]}
+  - id: white_noise
+    type: speaker
+    room: nursery
+    description: White-noise speaker in the nursery
+    states: {playing: [on, off]}
+  - id: tv
+    type: television
+    room: living_room
+    description: Living room TV
+    states: {power: [on, off]}
+environment:
+  - id: noise_nursery
+    room: nursery
+    kind: numeric
+    description: Nursery sound level from the baby monitor (dB)
+  - id: home_mode
+    room: home
+    kind: categorical
+    values: [home, away, night]
+    description: Household mode
+effects:
+  - source: white_noise.playing
+    when: on
+    target: noise_nursery
+    effect: increase
+    kind: environmental
+    description: White noise is picked up by the baby monitor microphone
+  - source: soundbar.power
+    when: on
+    target: noise_nursery
+    effect: increase
+    kind: environmental
+    description: The soundbar shares a thin wall with the nursery
+rules:
+  - id: R1
+    text: When the nursery sound level exceeds 60 dB (baby crying), turn on the nursery lamp at low brightness.
+    trigger: {type: env, ref: noise_nursery, op: ">", value: 60}
+    actions: [{ref: nursery_lamp.power, value: on}]
+  - id: R2
+    text: At 19:30 start the white-noise speaker in the nursery.
+    trigger: {type: time, at: "19:30"}
+    actions: [{ref: white_noise.playing, value: on}]
+  - id: R3
+    text: When the TV turns on after 20:00, turn on the soundbar.
+    trigger: {type: state, ref: tv.power, value: on}
+    conditions: [{type: time_range, start: "20:00", end: "23:59"}]
+    actions: [{ref: soundbar.power, value: on}]
+  - id: R4
+    text: When the home switches to night mode, turn off the TV.
+    trigger: {type: env, ref: home_mode, value: night}
+    actions: [{ref: tv.power, value: off}]
+cases:
+  - id: s19_c1
+    rules: [R2, R1]
+    label: conflict
+    type: semantic
+    justification: The white noise is loud enough for the baby monitor to read it as crying, switching the lamp on and waking the baby.
+    key_nodes: [white_noise, noise_nursery]
+  - id: s19_c2
+    rules: [R3, R1]
+    label: conflict
+    type: semantic
+    justification: The soundbar's noise carries through the wall into the nursery and triggers the crying routine.
+    key_nodes: [soundbar, noise_nursery]
+  - id: s19_c3
+    rules: [R4, R2]
+    label: clean
+    justification: Turning off the TV at night is unrelated to the white-noise speaker.

@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.cache/
+.env
+*.tmp
+.DS_Store
+# experiment outputs are reproducible from the LLM cache; keep only curated results
+results/*
+!results/symbolic/
+# original source documents (kept local)
+tmp/
+# contains private correspondence; keep local unless the repo is private
+docs/chatgpt_conversation_summary.md

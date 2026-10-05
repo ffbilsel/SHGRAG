@@ -1,0 +1,82 @@
+id: s10_wall_switch_bulbs
+name: Rented flat - smart bulbs behind a smart wall switch
+description: Smart bulbs in the bedroom are wired behind a smart relay wall switch.
+rooms: [bedroom, corridor, home]
+devices:
+  - id: switch_bedroom
+    type: smart_wall_switch
+    room: bedroom
+    description: In-wall smart relay switch
+    states: {power: [on, off]}
+  - id: bulb_bedroom
+    type: smart_bulb
+    room: bedroom
+    description: Colour smart bulb
+    states: {power: [on, off], brightness: []}
+  - id: bulb_corridor
+    type: smart_bulb
+    room: corridor
+    description: Corridor smart bulb
+    states: {power: [on, off]}
+  - id: switch_corridor
+    type: smart_wall_switch
+    room: corridor
+    description: Corridor smart switch
+    states: {power: [on, off]}
+environment:
+  - id: home_mode
+    room: home
+    kind: categorical
+    values: [home, away, night]
+    description: Household mode
+  - id: alarm_clock
+    room: bedroom
+    kind: boolean
+    description: Phone wake-up alarm event
+effects:
+  - source: switch_bedroom.power
+    when: off
+    target: bulb_bedroom.power
+    effect: set
+    value: off
+    kind: physical
+    description: The bedroom bulb is wired behind the bedroom wall switch relay
+  - source: switch_corridor.power
+    when: off
+    target: bulb_corridor.power
+    effect: set
+    value: off
+    kind: physical
+    description: The corridor bulb is wired behind the corridor switch relay
+rules:
+  - id: R1
+    text: When the home switches to night mode, turn off the bedroom wall switch.
+    trigger: {type: env, ref: home_mode, value: night}
+    actions: [{ref: switch_bedroom.power, value: off}]
+  - id: R2
+    text: When the wake-up alarm rings, fade in the bedroom bulb to 60 % brightness.
+    trigger: {type: env, ref: alarm_clock, value: true}
+    actions: [{ref: bulb_bedroom.power, value: on}, {ref: bulb_bedroom.brightness, value: 60}]
+  - id: R3
+    text: When the home switches to night mode, turn off the corridor bulb.
+    trigger: {type: env, ref: home_mode, value: night}
+    actions: [{ref: bulb_corridor.power, value: off}]
+  - id: R4
+    text: At 06:30 turn on the corridor bulb.
+    trigger: {type: time, at: "06:30"}
+    actions: [{ref: bulb_corridor.power, value: on}]
+cases:
+  - id: s10_c1
+    rules: [R1, R2]
+    label: conflict
+    type: physical
+    justification: The wall switch relay cuts power to the bedroom bulb at night, so the wake-up fade cannot run while night mode is still active.
+    key_nodes: [switch_bedroom, bulb_bedroom]
+  - id: s10_c2
+    rules: [R3, R4]
+    label: clean
+    justification: The corridor bulb is turned off by a soft command (relay stays on) and turned back on at 06:30 - normal schedule.
+  - id: s10_c3
+    rules: [R1, R4]
+    label: clean
+    justification: The bedroom switch does not feed the corridor bulb.

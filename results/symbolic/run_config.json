@@ -1,0 +1,10 @@
+{
+  "conditions": [
+    "symbolic",
+    "symbolic_noaffects"
+  ],
+  "runs": 1,
+  "n_cases": 75,
+  "model": "claude-opus-5-5",
+  "effort": "medium"
+}

@@ -1,0 +1,86 @@
+id: s01_hallway_security
+name: City apartment - hallway security
+description: Two-room apartment with a smart lock, a plug-powered hallway camera and a lamp.
+rooms: [hallway, living_room, home]
+devices:
+  - id: lock_front
+    type: smart_lock
+    room: hallway
+    description: Front door smart lock
+    states: {lock: [locked, unlocked]}
+  - id: plug_hall
+    type: smart_plug
+    room: hallway
+    description: Smart plug in the hallway socket
+    states: {power: [on, off]}
+  - id: camera_hall
+    type: camera
+    room: hallway
+    description: Indoor security camera facing the front door
+    states: {power: [on, off], recording: [on, off]}
+  - id: lamp_living
+    type: light
+    room: living_room
+    description: Floor lamp in the living room
+    states: {power: [on, off]}
+environment:
+  - id: home_mode
+    room: home
+    kind: categorical
+    values: [home, away, night]
+    description: Household mode set by the alarm panel
+  - id: motion_hall
+    room: hallway
+    kind: boolean
+    description: Hallway motion sensor reading
+effects:
+  - source: plug_hall.power
+    when: off
+    target: camera_hall.power
+    effect: set
+    value: off
+    kind: physical
+    description: The hallway camera is powered through the hallway smart plug
+rules:
+  - id: R1
+    text: At 23:00 turn off the hallway smart plug to save energy.
+    trigger: {type: time, at: "23:00"}
+    actions: [{ref: plug_hall.power, value: off}]
+  - id: R2
+    text: When the home is set to away mode, start recording on the hallway camera.
+    trigger: {type: env, ref: home_mode, value: away}
+    actions: [{ref: camera_hall.recording, value: on}]
+  - id: R3
+    text: When the home switches to night mode, lock the front door.
+    trigger: {type: env, ref: home_mode, value: night}
+    actions: [{ref: lock_front.lock, value: locked}]
+  - id: R4
+    text: When motion is detected in the hallway between 22:00 and 06:00, unlock the front door so guests can leave.
+    trigger: {type: env, ref: motion_hall, value: true}
+    conditions: [{type: time_range, start: "22:00", end: "06:00"}]
+    actions: [{ref: lock_front.lock, value: unlocked}]
+  - id: R5
+    text: At 23:00 turn off the living room lamp.
+    trigger: {type: time, at: "23:00"}
+    actions: [{ref: lamp_living.power, value: off}]
+cases:
+  - id: s01_c1
+    rules: [R1, R2]
+    label: conflict
+    type: physical
+    justification: R1 cuts power to the hallway plug, which powers the camera R2 relies on for away-mode recording.
+    key_nodes: [plug_hall, camera_hall]
+  - id: s01_c2
+    rules: [R3, R4]
+    label: conflict
+    type: logical
+    justification: In night mode R3 locks the door while hallway motion at night makes R4 unlock it.
+    key_nodes: [lock_front]
+  - id: s01_c3
+    rules: [R5, R2]
+    label: clean
+    justification: Turning off the living room lamp has no relation to the hallway camera recording.
+  - id: s01_c4
+    rules: [R1, R3]
+    label: clean
+    justification: The hallway plug does not power the lock; locking at night is unaffected.

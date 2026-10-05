@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "shgrag"
+version = "0.1.0"
+description = "Graph-assisted detection of conflicting smart-home automation rules (LLM + knowledge graph)"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "anthropic>=1.11",
+    "networkx>=3.2",
+    "pydantic>=2.6",
+    "pyyaml>=6.0",
+    "matplotlib>=3.8",
+]
+
+[project.optional-dependencies]
+demo = ["streamlit>=1.35"]
+dev = ["pytest>=8"]
+
+[project.scripts]
+shgrag = "shgrag.cli:main"
+
+[tool.setuptools]
+packages = ["shgrag"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

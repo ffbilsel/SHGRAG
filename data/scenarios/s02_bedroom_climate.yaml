@@ -1,0 +1,103 @@
+id: s02_bedroom_climate
+name: Family house - bedroom and living room climate
+description: Space heater, ventilation and windows across bedroom and living room.
+rooms: [bedroom, living_room]
+devices:
+  - id: heater_living
+    type: space_heater
+    room: living_room
+    description: Electric space heater
+    states: {power: [on, off]}
+  - id: heater_bedroom
+    type: space_heater
+    room: bedroom
+    description: Electric space heater
+    states: {power: [on, off]}
+  - id: vent_living
+    type: ventilation_fan
+    room: living_room
+    description: Ceiling ventilation fan
+    states: {power: [on, off]}
+  - id: window_living
+    type: window_actuator
+    room: living_room
+    description: Motorised window opener
+    states: {position: [open, closed]}
+environment:
+  - id: temp_living
+    room: living_room
+    kind: numeric
+    description: Living room temperature (C)
+  - id: temp_bedroom
+    room: bedroom
+    kind: numeric
+    description: Bedroom temperature (C)
+  - id: home_mode
+    room: living_room
+    kind: categorical
+    values: [home, away, night]
+    description: Household mode
+effects:
+  - source: heater_living.power
+    when: on
+    target: temp_living
+    effect: increase
+    kind: environmental
+    description: The heater warms the living room
+  - source: heater_bedroom.power
+    when: on
+    target: temp_bedroom
+    effect: increase
+    kind: environmental
+    description: The heater warms the bedroom
+  - source: window_living.position
+    when: open
+    target: temp_living
+    effect: decrease
+    kind: environmental
+    description: An open window lets cold outdoor air in during the heating season
+rules:
+  - id: R1
+    text: At 18:00 turn on the living room heater.
+    trigger: {type: time, at: "18:00"}
+    actions: [{ref: heater_living.power, value: on}]
+  - id: R2
+    text: When the living room temperature rises above 26 C, turn on the ventilation fan and open the window.
+    trigger: {type: env, ref: temp_living, op: ">", value: 26}
+    actions: [{ref: vent_living.power, value: on}, {ref: window_living.position, value: open}]
+  - id: R3
+    text: At 21:00 turn on the bedroom heater.
+    trigger: {type: time, at: "21:00"}
+    actions: [{ref: heater_bedroom.power, value: on}]
+  - id: R4
+    text: When the living room temperature drops below 19 C, turn on the living room heater.
+    trigger: {type: env, ref: temp_living, op: "<", value: 19}
+    actions: [{ref: heater_living.power, value: on}]
+  - id: R5
+    text: At 18:00, if the home is in away mode, turn off the living room heater.
+    trigger: {type: time, at: "18:00"}
+    conditions: [{type: env, ref: home_mode, value: away}]
+    actions: [{ref: heater_living.power, value: off}]
+cases:
+  - id: s02_c1
+    rules: [R1, R2]
+    label: conflict
+    type: semantic
+    justification: The heater raises the living room temperature, which fires R2 and opens the window while still heating.
+    key_nodes: [heater_living, temp_living]
+  - id: s02_c2
+    rules: [R3, R2]
+    label: clean
+    justification: The bedroom heater only affects bedroom temperature; R2 watches the living room.
+  - id: s02_c3
+    rules: [R2, R4]
+    label: conflict
+    type: semantic
+    justification: R2 opens the window, which cools the room and triggers R4 to heat again - a heating/venting loop.
+    key_nodes: [window_living, temp_living]
+  - id: s02_c4
+    rules: [R1, R5]
+    label: conflict
+    type: logical
+    justification: At 18:00 in away mode R1 turns the living room heater on while R5 turns it off.
+    key_nodes: [heater_living]

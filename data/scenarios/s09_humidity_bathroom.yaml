@@ -1,0 +1,95 @@
+id: s09_humidity_bathroom
+name: Flat with nursery - humidifier and dehumidifier
+description: Humidity control in nursery and bathroom.
+rooms: [nursery, bathroom]
+devices:
+  - id: humidifier_nursery
+    type: humidifier
+    room: nursery
+    description: Ultrasonic humidifier
+    states: {power: [on, off]}
+  - id: dehumidifier_nursery
+    type: dehumidifier
+    room: nursery
+    description: Compressor dehumidifier
+    states: {power: [on, off]}
+  - id: fan_bath
+    type: extractor_fan
+    room: bathroom
+    description: Bathroom extractor fan
+    states: {power: [on, off]}
+  - id: towel_heater
+    type: towel_rail
+    room: bathroom
+    description: Electric towel rail
+    states: {power: [on, off]}
+environment:
+  - id: humidity_nursery
+    room: nursery
+    kind: numeric
+    description: Nursery relative humidity (%)
+  - id: humidity_bath
+    room: bathroom
+    kind: numeric
+    description: Bathroom relative humidity (%)
+effects:
+  - source: humidifier_nursery.power
+    when: on
+    target: humidity_nursery
+    effect: increase
+    kind: environmental
+    description: The humidifier adds moisture to the nursery
+  - source: dehumidifier_nursery.power
+    when: on
+    target: humidity_nursery
+    effect: decrease
+    kind: environmental
+    description: The dehumidifier removes moisture from the nursery
+  - source: fan_bath.power
+    when: on
+    target: humidity_bath
+    effect: decrease
+    kind: environmental
+    description: The fan extracts humid air
+rules:
+  - id: R1
+    text: At 20:00 turn on the nursery humidifier for the baby's sleep.
+    trigger: {type: time, at: "20:00"}
+    actions: [{ref: humidifier_nursery.power, value: on}]
+  - id: R2
+    text: When nursery humidity exceeds 55 %, turn on the dehumidifier to prevent mould.
+    trigger: {type: env, ref: humidity_nursery, op: ">", value: 55}
+    actions: [{ref: dehumidifier_nursery.power, value: on}]
+  - id: R3
+    text: When bathroom humidity exceeds 70 %, turn on the extractor fan.
+    trigger: {type: env, ref: humidity_bath, op: ">", value: 70}
+    actions: [{ref: fan_bath.power, value: on}]
+  - id: R4
+    text: When bathroom humidity drops below 50 %, turn off the extractor fan.
+    trigger: {type: env, ref: humidity_bath, op: "<", value: 50}
+    actions: [{ref: fan_bath.power, value: off}]
+  - id: R5
+    text: At 20:00 turn off the nursery dehumidifier because it is too loud for sleep.
+    trigger: {type: time, at: "20:00"}
+    actions: [{ref: dehumidifier_nursery.power, value: off}]
+cases:
+  - id: s09_c1
+    rules: [R1, R2]
+    label: conflict
+    type: semantic
+    justification: The humidifier raises nursery humidity above 55 %, so R2 starts the dehumidifier - both devices run against each other all night.
+    key_nodes: [humidifier_nursery, humidity_nursery]
+  - id: s09_c2
+    rules: [R3, R4]
+    label: clean
+    justification: Fan on above 70 % and off below 50 % is a normal hysteresis band.
+  - id: s09_c3
+    rules: [R1, R3]
+    label: clean
+    justification: The nursery humidifier does not affect bathroom humidity.
+  - id: s09_c4
+    rules: [R2, R5]
+    label: conflict
+    type: logical
+    justification: If humidity is above 55 % at 20:00, R2 turns the dehumidifier on while R5 turns it off.
+    key_nodes: [dehumidifier_nursery]

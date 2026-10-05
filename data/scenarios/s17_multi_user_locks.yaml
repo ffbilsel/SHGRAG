@@ -1,0 +1,72 @@
+id: s17_multi_user_locks
+name: Family house - multi-user door and gate rules
+description: Parents and teenagers configured door, gate and porch light rules separately.
+rooms: [entrance, garden, home]
+devices:
+  - id: lock_front
+    type: smart_lock
+    room: entrance
+    description: Front door lock
+    states: {lock: [locked, unlocked]}
+  - id: gate
+    type: gate_opener
+    room: garden
+    description: Driveway gate
+    states: {position: [open, closed]}
+  - id: porch_light
+    type: light
+    room: entrance
+    description: Porch light
+    states: {power: [on, off]}
+environment:
+  - id: teen_phone_home
+    room: home
+    kind: boolean
+    description: Teenager's phone geofence (arrived home)
+  - id: home_mode
+    room: home
+    kind: categorical
+    values: [home, away, night]
+    description: Household mode
+  - id: doorbell_pressed
+    room: entrance
+    kind: boolean
+    description: Doorbell button event
+effects: []
+rules:
+  - id: R1
+    text: When the teenager's phone arrives home, unlock the front door.
+    trigger: {type: env, ref: teen_phone_home, value: true}
+    actions: [{ref: lock_front.lock, value: unlocked}]
+  - id: R2
+    text: Between 23:00 and 06:00 keep the front door locked whenever it is unlocked.
+    trigger: {type: state, ref: lock_front.lock, value: unlocked}
+    conditions: [{type: time_range, start: "23:00", end: "06:00"}]
+    actions: [{ref: lock_front.lock, value: locked}]
+  - id: R3
+    text: At 22:00 close the driveway gate.
+    trigger: {type: time, at: "22:00"}
+    actions: [{ref: gate.position, value: closed}]
+  - id: R4
+    text: At 07:00 open the driveway gate.
+    trigger: {type: time, at: "07:00"}
+    actions: [{ref: gate.position, value: open}]
+  - id: R5
+    text: When the doorbell is pressed, turn on the porch light.
+    trigger: {type: env, ref: doorbell_pressed, value: true}
+    actions: [{ref: porch_light.power, value: on}]
+cases:
+  - id: s17_c1
+    rules: [R1, R2]
+    label: conflict
+    type: logical
+    justification: When the teenager comes home after 23:00, R1 unlocks and R2 immediately relocks the door (lock-out / oscillation).
+    key_nodes: [lock_front]
+  - id: s17_c2
+    rules: [R3, R4]
+    label: clean
+    justification: Closing at 22:00 and opening at 07:00 is a normal schedule.
+  - id: s17_c3
+    rules: [R5, R1]
+    label: clean
+    justification: The porch light and the door lock are independent.
