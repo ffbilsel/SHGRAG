@@ -6,6 +6,11 @@ of (model, effort, system, prompt, run index) so experiments can be re-scored
 without new API calls; different run indices give independent samples for the
 repeatability test.
 
+Two backends: "api" calls the Anthropic API (needs ANTHROPIC_API_KEY);
+"claude_code" runs the same prompt through the Claude Code CLI (`claude -p`)
+with the same system prompt and output schema, using the logged-in Claude
+Code account instead of an API key.
+
 Note on sampling: Claude Opus 5.5 does not accept `temperature`; the model,
 effort level, prompts and output schema are held fixed instead. If you switch
 to a model that accepts sampling parameters, set `temperature` in LLMConfig.
@@ -16,6 +21,8 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import subprocess
+import tempfile
 import threading
 import time
 from dataclasses import asdict, dataclass, field
@@ -25,6 +32,7 @@ from .prompts import SYSTEM_PROMPT, Verdict
 
 DEFAULT_MODEL = os.environ.get("SHGRAG_MODEL", "claude-opus-5-5")
 DEFAULT_EFFORT = os.environ.get("SHGRAG_EFFORT", "medium")
+DEFAULT_BACKEND = os.environ.get("SHGRAG_BACKEND", "api")
 DEFAULT_CACHE = Path(os.environ.get("SHGRAG_CACHE", Path(__file__).resolve().parent.parent / ".cache" / "llm"))
 
 
@@ -32,6 +40,7 @@ DEFAULT_CACHE = Path(os.environ.get("SHGRAG_CACHE", Path(__file__).resolve().par
 class LLMConfig:
     model: str = DEFAULT_MODEL
     effort: str = DEFAULT_EFFORT
+    backend: str = DEFAULT_BACKEND  # "api" or "claude_code"
     max_tokens: int = 16000
     temperature: float | None = None  # only for models that accept sampling params
     cache_dir: Path = DEFAULT_CACHE
@@ -67,7 +76,7 @@ class LLMClient:
     def _key(self, prompt: str, run: int) -> str:
         c = self.config
         blob = json.dumps(
-            {"model": c.model, "effort": c.effort, "temperature": c.temperature, "system": SYSTEM_PROMPT, "prompt": prompt, "run": run},
+            {"backend": c.backend, "model": c.model, "effort": c.effort, "temperature": c.temperature, "system": SYSTEM_PROMPT, "prompt": prompt, "run": run},
             sort_keys=True,
         )
         return hashlib.sha256(blob.encode()).hexdigest()
@@ -110,6 +119,8 @@ class LLMClient:
         return result
 
     def _call(self, prompt: str) -> LLMResult:
+        if self.config.backend == "claude_code":
+            return self._call_claude_code(prompt)
         import anthropic
 
         c = self.config
@@ -139,3 +150,32 @@ class LLMClient:
         if resp.parsed_output is None:
             return LLMResult(None, error="unparsed_output", **usage)
         return LLMResult(resp.parsed_output, **usage)
+
+    def _call_claude_code(self, prompt: str) -> LLMResult:
+        c = self.config
+        cmd = [
+            "claude", "-p", "--output-format", "json", "--no-session-persistence",
+            "--system-prompt", SYSTEM_PROMPT, "--json-schema", json.dumps(Verdict.model_json_schema()),
+            "--model", c.model, "--effort", c.effort, "--tools", "",
+        ]
+        t0 = time.perf_counter()
+        try:
+            # Run outside the repo so no project CLAUDE.md or memory leaks into the context.
+            proc = subprocess.run(cmd, input=prompt, capture_output=True, text=True, timeout=900, cwd=tempfile.gettempdir())
+            data = json.loads(proc.stdout)
+        except (subprocess.TimeoutExpired, json.JSONDecodeError, OSError) as e:
+            return LLMResult(None, error=f"api_error: claude_code: {type(e).__name__}: {e}", latency_s=time.perf_counter() - t0)
+        latency = time.perf_counter() - t0
+        u = data.get("usage") or {}
+        usage = dict(
+            input_tokens=u.get("input_tokens", 0) + u.get("cache_creation_input_tokens", 0) + u.get("cache_read_input_tokens", 0),
+            output_tokens=u.get("output_tokens", 0),
+            latency_s=latency,
+        )
+        if data.get("stop_reason") == "refusal":
+            return LLMResult(None, error="refusal", **usage)
+        if data.get("is_error") or proc.returncode != 0:
+            return LLMResult(None, error=f"api_error: claude_code: {data.get('subtype')}: {str(data.get('result'))[:200]}", **usage)
+        if data.get("structured_output") is None:
+            return LLMResult(None, error="unparsed_output", **usage)
+        return LLMResult(Verdict.model_validate(data["structured_output"]), **usage)

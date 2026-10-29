@@ -91,11 +91,13 @@ def cmd_run(args) -> None:
         cfg.model = args.model
     if args.effort:
         cfg.effort = args.effort
+    if args.backend:
+        cfg.backend = args.backend
     if args.temperature is not None:
         cfg.temperature = args.temperature
     n_cases = sum(len(s.cases) for s in scenarios)
     n_llm = n_cases * args.runs * sum(c != "symbolic" for c in args.conditions)
-    print(f"{n_cases} cases x {args.runs} runs x {args.conditions} -> {n_llm} LLM calls (model {cfg.model}, effort {cfg.effort})")
+    print(f"{n_cases} cases x {args.runs} runs x {args.conditions} -> {n_llm} LLM calls (model {cfg.model}, effort {cfg.effort}, backend {cfg.backend})")
     run_experiment(scenarios, args.conditions, args.runs, Path(args.out), llm=LLMClient(cfg), workers=args.workers)
     print((Path(args.out) / "results.md").read_text())
 
@@ -140,6 +142,8 @@ def main(argv: list[str] | None = None) -> None:
     run.add_argument("--workers", type=int, default=8)
     run.add_argument("--model")
     run.add_argument("--effort", choices=["low", "medium", "high", "xhigh", "max"])
+    run.add_argument("--backend", choices=["api", "claude_code"],
+                     help="api: Anthropic API key; claude_code: logged-in Claude Code CLI, no API key")
     run.add_argument("--temperature", type=float, help="only for models that accept sampling parameters")
     run.add_argument("--scenarios", nargs="+", help="restrict to these scenario ids")
     run.add_argument("--limit", type=int, help="use only the first N cases (smoke test)")

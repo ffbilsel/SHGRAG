@@ -43,7 +43,8 @@ results/symbolic/      reference results of the deterministic checker (no LLM)
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[demo,dev]"
-export ANTHROPIC_API_KEY=...            # needed only for the LLM conditions
+export ANTHROPIC_API_KEY=...            # needed only for the LLM conditions with --backend api
+# or: no API key, run the LLM through the logged-in Claude Code CLI with --backend claude_code
 ```
 
 ## Usage
@@ -56,6 +57,7 @@ python -m shgrag graph s05_router_dependency --case s05_c1 --out figures/s05_c1.
 
 # smoke test (2 cases, 1 run) before the full experiment
 python -m shgrag run --limit 2 --runs 1 --out results/smoke
+python -m shgrag run --backend claude_code --limit 2 --runs 1 --out results/smoke   # same, without an API key
 
 # main experiment: 75 cases x 3 runs x {text, graph, graph_noaffects} + symbolic
 python -m shgrag run --runs 3 --out results/main
@@ -96,7 +98,21 @@ pytest                                                 # tests (no network)
 | full graph | 91.3 | 100 | 95.5 | 100 / 100 / 100 |
 | without AFFECTS | 88.2 | 35.7 | 50.8 | 100 / 0 / 0 |
 
-This sanity check shows that the semantic and physical conflicts in the benchmark can only be found through the causal/dependency edges. The checker's 4 false positives are intended feedback loops it cannot tell apart from conflicts: the sprinkler stopping when soil is wet, the backup heating a closet that is then cooled. LLM results go in `results/main/` after running the experiment.
+This sanity check shows that the semantic and physical conflicts in the benchmark can only be found through the causal/dependency edges. The checker's 4 false positives are intended feedback loops it cannot tell apart from conflicts: the sprinkler stopping when soil is wet, the backup heating a closet that is then cooled. 
+
+### Main result (Claude Opus 5.5, effort medium, 75 cases × 3 runs)
+
+Run with `python -m shgrag run --backend claude_code --runs 3 --out results/main`. Full tables are in [`results/main/results.md`](results/main/results.md).
+
+| Condition | Precision | Recall | F1 | FP | FN | Run agreement | Logical / semantic / physical recall |
+|---|---|---|---|---|---|---|---|
+| text | 89.7 ± 1.7 | 96.0 ± 2.2 | 92.7 ± 1.1 | 4.7 | 1.7 | 93.3 | 100 / 95.2 / 92.3 |
+| graph | 96.2 ± 1.0 | 100.0 | 98.1 ± 0.5 | 1.7 | 0 | 98.7 | 100 / 100 / 100 |
+| graph_noaffects | 96.9 | 75.4 ± 1.1 | 84.8 ± 0.7 | 1.0 | 10.3 | 98.7 | 100 / 76.2 / 46.2 |
+
+- Graph context raises F1 by 5.4 points, cuts false positives and makes verdicts more stable. The case-level difference to text is not significant: McNemar p = 0.125, with graph alone correct on 4 cases and text alone correct on none.
+- Removing AFFECTS edges drops recall to 75.4 and physical recall to 46.2 (McNemar p = 0.012 against the full graph).
+- The text baseline is stronger than expected. Its prompt includes the home name, and some names hint at the hidden dependency (e.g. "Home office - network dependency chain"). A re-run without home names is planned.
 
 ## Deliverables (proposal §9)
 

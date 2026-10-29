@@ -45,13 +45,15 @@ Linear: [SHGRAG projesi](https://linear.app/ffbilsel/project/shgrag-f526f86c3d26
 
 ## M1 — Capstone tamamlama (öncelik sırasıyla)
 
+Durum (2026-10-29): C4 ve C5 tamamlandı. API key olmadan, `--backend claude_code` ile çalıştırıldı; sonuçlar `results/main/` altında. Not: text-only prompt'taki ev adları bağımlılığa ipucu veriyor. C3 sonrasında ev adları çıkarılarak deney tekrarlanmalı (C7).
+
 | Sıra | ID | Task | Öncelik | Bağımlılık | Kaynak |
 |---|---|---|---|---|---|
 | 1 | C1 ([FFB-14](https://linear.app/ffbilsel/issue/FFB-14)) | Hocaya kapsam mailini gönder; kapsamı ve M2 seçimini netleştir. Fatih Alagöz hocaya güncel bilgi ver. | P0 | — | [GPT] |
 | 2 | C2 ([FFB-15](https://linear.app/ffbilsel/issue/FFB-15)) | Related-work analizi: KFUPM SHGRAG tezi baseline olarak; SIGFRID, TAPFixer, IoTSafe, AutoIoT, CAGE-TAP, PhysCheck ile eksen bazlı boşluk analizi | P0 | — | [GPT] §D, §3 |
-| 3 | C4 ([FFB-16](https://linear.app/ffbilsel/issue/FFB-16)) | Anthropic API erişimi ve smoke test (`shgrag run --limit 2 --runs 1`) | P0 | — | [P] §5 |
+| 3 | ~~C4~~ ✅ ([FFB-16](https://linear.app/ffbilsel/issue/FFB-16)) | Anthropic API erişimi ve smoke test (`shgrag run --limit 2 --runs 1`) | P0 | — | [P] §5 |
 | 4 | C3 ([FFB-17](https://linear.app/ffbilsel/issue/FFB-17)) | Benchmark gözden geçirme: ikinci etiketleyici, IFTTT / SmartThings / HA public örneklerinden uyarlama, dataset `v1.0` dondurma | P1 | — (K2: C5'ten önce) | [P] §5 |
-| 5 | C5 ([FFB-18](https://linear.app/ffbilsel/issue/FFB-18)) | Ana deney: 75 case × 3 run × {text, graph, graph_noaffects} + symbolic | P0 | C3, C4 | [P] §5, §6 |
+| 5 | ~~C5~~ ✅ ([FFB-18](https://linear.app/ffbilsel/issue/FFB-18)) | Ana deney: 75 case × 3 run × {text, graph, graph_noaffects} + symbolic | P0 | C3, C4 | [P] §5, §6 |
 | 6 | C6 ([FFB-19](https://linear.app/ffbilsel/issue/FFB-19)) | Uzman 0/1 değerlendirmesi (açıklama desteklenmiş mi / repair güvenli mi) | P1 | C5 ([FFB-18](https://linear.app/ffbilsel/issue/FFB-18)) | [P] §5, §7 |
 | 7 | C7 ([FFB-20](https://linear.app/ffbilsel/issue/FFB-20)) | Hata analizi ve duyarlılık: hata graph eksiğinden mi, LLM'den mi? Prompt wording, model ve graph kalitesi (eksik/yanlış kenar) robustness | P1 | C5 ([FFB-18](https://linear.app/ffbilsel/issue/FFB-18)) | [P] §8, [GPT] B |
 | 8 | C8 ([FFB-21](https://linear.app/ffbilsel/issue/FFB-21)) | Plot'lar, tablolar ve demo videosu | P1 | C5, C6 | [P] §9 |

@@ -80,3 +80,26 @@ def test_run_experiment_end_to_end(scenarios, tmp_path):
         assert (out / f).exists(), f
     md = (out / "results.md").read_text()
     assert "Ablation" in md and "McNemar" in md
+
+
+def test_claude_code_backend(cases, tmp_path, monkeypatch):
+    import json
+    import subprocess
+
+    calls = []
+
+    def fake_run(cmd, input, **kw):
+        calls.append((cmd, input))
+        v = Verdict(conflict=True, conflict_type="physical", involved_rules=["R1"], explanation="x", evidence=[], repair="none")
+        out = {"is_error": False, "stop_reason": "end_turn", "structured_output": v.model_dump(),
+               "usage": {"input_tokens": 5, "cache_creation_input_tokens": 10, "output_tokens": 3}}
+        return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps(out), stderr="")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    llm = LLMClient(LLMConfig(cache_dir=tmp_path / "cache", backend="claude_code"))
+    s, c = cases["s01_c1"]
+    p = GraphReasoner(llm).predict(s, c.rules)
+    assert p.conflict and p.conflict_type == "physical"
+    cmd, prompt = calls[0]
+    assert cmd[cmd.index("--system-prompt") + 1] == SYSTEM_PROMPT
+    assert cmd[cmd.index("--tools") + 1] == "" and "AFFECTS" in prompt

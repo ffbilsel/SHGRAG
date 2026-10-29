@@ -68,6 +68,7 @@ def run_experiment(
     meta = dict(
         conditions=conditions, runs=runs, n_cases=sum(len(s.cases) for s in scenarios),
         model=llm.config.model if llm else None, effort=llm.config.effort if llm else None,
+        backend=llm.config.backend if llm else None,
     )
     (out_dir / "run_config.json").write_text(json.dumps(meta, indent=2))
     write_report(records, out_dir, meta)

@@ -9,6 +9,7 @@ __pycache__/
 # experiment outputs are reproducible from the LLM cache; keep only curated results
 results/*
 !results/symbolic/
+!results/main/
 # original source documents (kept local)
 tmp/
 # contains private correspondence; keep local unless the repo is private
