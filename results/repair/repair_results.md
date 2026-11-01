@@ -1,22 +1,22 @@
 # Repair–verify results
 
-15 conflict cases (5 per type) · runs: 3 · max attempts per run: 2 · approval: automatic (--yes)
+15 conflict cases (5 per type) · runs: 3 · max attempts per run: 3 · approval: automatic (--yes)
 
 Success = the edit applies, the hazard simulations no longer show the undesired outcome, the intent simulations still pass, and a whole-home symbolic re-check flags no new rule pair. `path valid` = the cited graph path exists.
 
 | Condition | Success (any attempt) | First-try success | Mean attempts | Applicable | Resolved | Intent kept | No new conflict | Path valid |
 |---|---|---|---|---|---|---|---|---|
-| text | 100 | 91 | 1.09 | 100 | 100 | 100 | 100 | 71 |
-| text_deps | 100 | 98 | 1.02 | 100 | 100 | 100 | 100 | 91 |
-| graph | 100 | 96 | 1.04 | 100 | 100 | 100 | 100 | 100 |
+| text | 91 | 78 | 1.31 | 100 | 100 | 91 | 100 | 71 |
+| text_deps | 91 | 84 | 1.24 | 100 | 100 | 91 | 100 | 91 |
+| graph | 91 | 82 | 1.27 | 100 | 100 | 91 | 100 | 100 |
 
 ## Success by conflict type (any attempt)
 
 | Condition | logical | semantic | physical |
 |---|---|---|---|
-| text | 100 | 100 | 100 |
-| text_deps | 100 | 100 | 100 |
-| graph | 100 | 100 | 100 |
+| text | 100 | 73 | 100 |
+| text_deps | 100 | 73 | 100 |
+| graph | 100 | 73 | 100 |
 
 ## Per case (final attempt of run 0)
 
@@ -130,7 +130,7 @@ Success = the edit applies, the hazard simulations no longer show the undesired 
     conditions: home_mode != night
     actions: plug_bedside.power := off
   ```
-- **graph / s15_c2** (semantic) — ✅ after 1 attempt(s): `add_condition` on R4
+- **graph / s15_c2** (semantic) — ❌ after 3 attempt(s): `add_condition` on R4 — Intended behaviour lost: 'R4 closes the skylight when real rain starts during watering (added after the rubric pilot)' expected at end skylight.position == closed. Trace:
   ```
   - R4: "When rain is detected, close the bedroom skylight."
     trigger: rain_sensor == True
@@ -163,7 +163,7 @@ Success = the edit applies, the hazard simulations no longer show the undesired 
     conditions: none
     actions: shades_office.position := open
   ```
-- **graph / s19_c1** (semantic) — ✅ after 1 attempt(s): `add_condition` on R1
+- **graph / s19_c1** (semantic) — ❌ after 3 attempt(s): `add_condition` on R1 — Intended behaviour lost: 'R1 reacts to real crying while the white noise plays (added after the rubric pilot)' expected at end nursery_lamp.power == on. Trace:
   ```
   - R1: "When the nursery sound level exceeds 60 dB (baby crying), turn on the nursery lamp at low brightness."
     trigger: noise_nursery > 60
@@ -295,7 +295,7 @@ Success = the edit applies, the hazard simulations no longer show the undesired 
     conditions: home_mode != night
     actions: plug_bedside.power := off
   ```
-- **text / s15_c2** (semantic) — ✅ after 1 attempt(s): `add_condition` on R4
+- **text / s15_c2** (semantic) — ❌ after 3 attempt(s): `add_condition` on R4 — Intended behaviour lost: 'R4 closes the skylight when real rain starts during watering (added after the rubric pilot)' expected at end skylight.position == closed. Trace:
   ```
   - R4: "When rain is detected, close the bedroom skylight."
     trigger: rain_sensor == True
@@ -328,15 +328,15 @@ Success = the edit applies, the hazard simulations no longer show the undesired 
     conditions: none
     actions: shades_office.position := open
   ```
-- **text / s19_c1** (semantic) — ✅ after 1 attempt(s): `add_condition` on R1
+- **text / s19_c1** (semantic) — ✅ after 2 attempt(s): `change_trigger` on R1
   ```
   - R1: "When the nursery sound level exceeds 60 dB (baby crying), turn on the nursery lamp at low brightness."
     trigger: noise_nursery > 60
     conditions: none
     actions: nursery_lamp.power := on
   + R1: "When the nursery sound level exceeds 60 dB (baby crying), turn on the nursery lamp at low brightness."
-    trigger: noise_nursery > 60
-    conditions: white_noise.playing == off
+    trigger: noise_nursery > 70
+    conditions: none
     actions: nursery_lamp.power := on
   ```
 - **text / s20_c6** (logical) — ✅ after 1 attempt(s): `add_condition` on R6
@@ -460,16 +460,16 @@ Success = the edit applies, the hazard simulations no longer show the undesired 
     conditions: home_mode != night
     actions: plug_bedside.power := off
   ```
-- **text_deps / s15_c2** (semantic) — ✅ after 1 attempt(s): `add_condition` on R4
+- **text_deps / s15_c2** (semantic) — ❌ after 3 attempt(s): `add_condition` on R3 — Intended behaviour lost: 'R3 waters the lawn at 14:00' expected at end sprinkler.watering == on. Trace:
   ```
-  - R4: "When rain is detected, close the bedroom skylight."
-    trigger: rain_sensor == True
+  - R3: "At 14:00 water the lawn."
+    trigger: time == 14:00
     conditions: none
-    actions: skylight.position := closed
-  + R4: "When rain is detected, close the bedroom skylight."
-    trigger: rain_sensor == True
-    conditions: sprinkler.watering == off
-    actions: skylight.position := closed
+    actions: sprinkler.watering := on
+  + R3: "At 14:00 water the lawn."
+    trigger: time == 14:00
+    conditions: skylight.position == closed
+    actions: sprinkler.watering := on
   ```
 - **text_deps / s16_c2** (physical) — ✅ after 1 attempt(s): `add_action` on R3
   ```
@@ -493,15 +493,15 @@ Success = the edit applies, the hazard simulations no longer show the undesired 
     conditions: none
     actions: shades_office.position := open
   ```
-- **text_deps / s19_c1** (semantic) — ✅ after 1 attempt(s): `add_condition` on R1
+- **text_deps / s19_c1** (semantic) — ✅ after 2 attempt(s): `change_trigger` on R1
   ```
   - R1: "When the nursery sound level exceeds 60 dB (baby crying), turn on the nursery lamp at low brightness."
     trigger: noise_nursery > 60
     conditions: none
     actions: nursery_lamp.power := on
   + R1: "When the nursery sound level exceeds 60 dB (baby crying), turn on the nursery lamp at low brightness."
-    trigger: noise_nursery > 60
-    conditions: white_noise.playing == off
+    trigger: noise_nursery > 70
+    conditions: none
     actions: nursery_lamp.power := on
   ```
 - **text_deps / s20_c6** (logical) — ✅ after 1 attempt(s): `add_condition` on R6

@@ -296,7 +296,15 @@ def sanity_check(scenario: Scenario, spec: dict, case_rules: list[str]) -> list[
             if check(_scoped(scenario, others), h, dyn)[0]:
                 problems.append(f"{spec['case']}: hazard '{h['name']}' occurs even without {rid} (spec does not isolate the conflict)")
     for it in _runs(spec, "intent"):
-        if not check(scoped, it, dyn)[0]:
+        if it.get("new_requirement"):
+            try:
+                ok = check(_scoped(apply_edit(scenario, RepairProposal.model_validate(it["witness"])), case_rules), it, dyn)[0]
+            except (KeyError, ValueError) as e:
+                ok = False
+                problems.append(f"{spec['case']}: intent '{it['name']}' has no valid witness ({e})")
+            if not ok:
+                problems.append(f"{spec['case']}: new-requirement intent '{it['name']}' is not met by its witness edit")
+        elif not check(scoped, it, dyn)[0]:
             problems.append(f"{spec['case']}: intent '{it['name']}' fails on the original rules")
     return problems
 

@@ -48,4 +48,4 @@ Degenerate edits accepted: 0 of 45
 | s15_c2 | noop | rejected | hazard remains | kept |
 | s19_c1 | disable_R2 | rejected | resolved | intent lost |
 | s19_c1 | disable_R1 | rejected | resolved | intent lost |
-| s19_c1 | noop | rejected | hazard remains | kept |
+| s19_c1 | noop | rejected | hazard remains | intent lost |

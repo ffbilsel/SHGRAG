@@ -18,6 +18,10 @@
 # source must be set explicitly (checked), because default values can silently
 # start an effect.
 #
+# An intent run marked `new_requirement: true` encodes a purpose that the
+# original rules do not meet either (found by the rubric pilot); instead of
+# passing on the original, it must be met by its `witness` edit.
+#
 # Spec keys (see shgrag/simulate.py): start (HH:MM), minutes, init, events
 # [{at, set}], and one of ever / at_end (lists of {ref, op, value}),
 # write_conflict (ref) or fires (rule id). `dynamics` sets rate/max/min for
@@ -337,6 +341,12 @@
       minutes: 10
       init: {sprinkler.watering: "off"}
       at_end: [{ref: sprinkler.watering, value: "on"}]
+    - name: R4 closes the skylight when real rain starts during watering (added after the rubric pilot)
+      start: "13:55"
+      minutes: 20
+      init: {sprinkler.watering: "off", rain_sensor: false, skylight.position: open}
+      events: [{at: "14:05", set: {rain_sensor: true}}]
+      at_end: [{ref: skylight.position, value: closed}]
     - name: R4 closes the skylight when it really rains
       start: "16:00"
       minutes: 5
@@ -359,6 +369,17 @@
       minutes: 10
       init: {noise_nursery: 40, white_noise.playing: "off", soundbar.power: "off", tv.power: "off"}
       at_end: [{ref: white_noise.playing, value: "on"}]
+    - name: R1 reacts to real crying while the white noise plays (added after the rubric pilot)
+      # New requirement: the original rules fail it too (the white noise already
+      # triggered R1, so real crying gives no new trigger). `witness` is an edit
+      # that satisfies it, so the requirement is known to be achievable.
+      new_requirement: true
+      witness: {target_rule: R1, operation: change_trigger, trigger: {type: env, ref: noise_nursery, op: ">", value: "70"}, graph_path: [R1], rationale: witness}
+      start: "19:25"
+      minutes: 40
+      init: {noise_nursery: 40, white_noise.playing: "off", nursery_lamp.power: "off", soundbar.power: "off", tv.power: "off"}
+      events: [{at: "19:45", set: {nursery_lamp.power: "off"}}, {at: "20:00", set: {noise_nursery: 80}}]
+      at_end: [{ref: nursery_lamp.power, value: "on"}]
     - name: R1 reacts to crying (quiet room)
       start: "03:00"
       minutes: 5

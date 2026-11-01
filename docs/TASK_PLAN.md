@@ -52,13 +52,13 @@ Linear: [SHGRAG projesi](https://linear.app/ffbilsel/project/shgrag-f526f86c3d26
 | HA/SmartThings kaynakları kayıtlı ve kontrol edilmiş | 44 kural 24 örnekten uyarlandı; URL + birebir alıntı kayıtlı. `check-sources` ile 44/44 doğrulandı. | `sources_check.json` |
 | Etiket: hangi koşulda, hangi istenmeyen sonuç | Her çatışmada `situation` + `undesired_outcome` alanları; şema bunu zorunlu tutuyor. | `schema.py`, tüm YAML'lar |
 | Aday kural kümesinin seçimi açıklanmalı; tüm evden tarama | Raporda açıklandı (anotatör çifti seçiyor). Tüm ev taraması eklendi; pooled adjudication öncesi ve sonrası skorlar raporda. | `scan.py`, `results/scan_*` |
-| Onarım–doğrulama döngüsü (10–15 vaka) | 15 vaka. Yapılandırılmış öneri → onay → kopyaya uygulama → simülasyon + tüm evin yeniden kontrolü → tekrar deneme. Negatif kontroller 45/45 reddedildi. | `repair.py`, `simulate.py`, `data/repair/`, `results/repair` |
+| Onarım–doğrulama döngüsü (10–15 vaka) | 15 vaka. Yapılandırılmış öneri → onay → kopyaya uygulama → simülasyon + tüm evin yeniden kontrolü → tekrar deneme. Başarı %91 (pilotun bulduğu iki niyet senaryosu eklendikten sonra; `s15` sensör yüzünden kural düzenlemesiyle onarılamıyor, `s19` 6/9). Negatif kontroller 45/45 reddedildi. | `repair.py`, `simulate.py`, `data/repair/`, `results/repair` |
 | Uzman değerlendirmesi: yön, ara adım, zaman, varsayım; onarımda işlevin korunması | Kriter bazlı rubrik; yönergeler hazır. Örneklemde FP, FN ve zor temiz vakalar var. LLM-judge pilotu yapıldı. **Uzman doldurması bekliyor.** | `annotation.py`, `docs/annotation_guidelines.md`, `results/annotation/` |
 | Yanlış pozitifler ve zor temiz vakalar | 36 vaka `hard: true` olarak işaretli; raporda bunlar için ayrı bir bölüm var. | rapor §8.7 |
 | Tekrarlar bağımsız sayılmamalı; ev düzeyinde CI | Cluster bootstrap (evler yeniden örnekleniyor), eşleştirilmiş farklar, ev bazında tablo. | `evaluation.py`, tüm `results.md` |
 | "900 tahminde hata yok" ifadesi | Raporda ve durum raporunda düzeltildi: kastedilen API/çıktı biçimi hatası (0); sınıflandırma hataları FP/FN. | rapor §8.2 |
 
-Açık kalan (insan işi): rubriği uzmanın doldurması, gerekirse ikinci bir anotatör (κ); dev ve test etiketlerinin ikinci bir etiketleyici tarafından gözden geçirilmesi (`t02_c3` tartışmalı). Pilotun bulduğu iki onarım boşluğu (`s15`, `s19`), uzman onayından sonra niyet senaryolarına eklenecek.
+Açık kalan (insan işi): rubriği uzmanın doldurması, gerekirse ikinci bir anotatör (κ); dev ve test etiketlerinin ikinci bir etiketleyici tarafından gözden geçirilmesi (`t02_c3` tartışmalı). Pilotun bulduğu iki onarım açığı (`s15`, `s19`) niyet senaryolarına eklendi ve deney yeniden koşuldu (2026-11-01).
 
 ## M1 — Capstone tamamlama (öncelik sırasıyla)
 
