@@ -1,5 +1,7 @@
 id: s11_thermostat_schedule
-name: Shared flat - competing thermostat schedules
+name: Shared flat
+split: dev
+family: thermostat_schedule
 description: Two flatmates created thermostat and AC routines independently.
 rooms: [living_room, home]
 devices:
@@ -64,14 +66,33 @@ cases:
     label: conflict
     type: logical
     justification: Around 18:00 both rules write different setpoints and modes to the same thermostat.
+    situation: "Someone arrives home between 17:00 and 19:00, around 18:00."
+    undesired_outcome: "R1 sets 23 C and R2 sets 19 C on the same thermostat; the final setpoint depends on timing."
     key_nodes: [thermostat]
   - id: s11_c2
     rules: [R3, R4]
     label: conflict
     type: semantic
     justification: AC cooling drives the temperature below 20 C, which makes R4 start heating - the systems fight each other.
+    situation: "The living room is warmer than 24 C so R3 starts cooling, and the AC drives it below 20 C."
+    undesired_outcome: "R4 switches the thermostat to heat while the AC is still cooling; heating and cooling fight each other."
     key_nodes: [ac_living, temp_living]
   - id: s11_c3
     rules: [R1, R5]
     label: clean
     justification: Heat at 18:00 and eco at 08:00 is a normal daily schedule.
+    situation: "Near miss: Different setpoints on the same thermostat, but at different times of day."
+    hard: true
+home_conflicts:
+  - rules: [R2, R4]
+    type: logical
+    justification: Arriving home between 17:00 and 19:00 makes R2 set eco mode while a room below 20 C makes R4 set heat on the same thermostat.
+    situation: "Someone arrives home between 17:00 and 19:00 while the living room is colder than 20 C."
+    undesired_outcome: "R2 sets eco and R4 sets heat on the same thermostat; the final mode depends on execution order."
+  - rules: [R4, R5]
+    type: logical
+    justification: R5 sets eco mode at 08:00; whenever the room is below 20 C, R4 switches the thermostat back to heat.
+    situation: "At 08:00 (or later in the day) while the living room is colder than 20 C."
+    undesired_outcome: "R4 overrides R5's eco schedule; the thermostat flips between eco and heat."
+home_clean_notes:
+  "R1+R3": "R1 heats to a 23 C setpoint, below R3's 24 C cooling threshold, so the heating does not trigger cooling."

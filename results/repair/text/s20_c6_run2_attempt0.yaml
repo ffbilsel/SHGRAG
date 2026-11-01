@@ -1,0 +1,241 @@
+id: s20_greenhouse
+name: Farmhouse
+description: A small greenhouse with a heater, roof vent, grow lights and a pump on
+  one outdoor circuit.
+rooms:
+- greenhouse
+- home
+devices:
+- id: gh_heater
+  type: heater
+  room: greenhouse
+  description: Greenhouse heater
+  states:
+    power:
+    - 'on'
+    - 'off'
+- id: gh_vent
+  type: vent_actuator
+  room: greenhouse
+  description: Automatic roof vent
+  states:
+    position:
+    - open
+    - closed
+- id: grow_lights
+  type: light
+  room: greenhouse
+  description: LED grow lights
+  states:
+    power:
+    - 'on'
+    - 'off'
+- id: plug_outdoor
+  type: smart_plug
+  room: greenhouse
+  description: Weatherproof outdoor smart plug
+  states:
+    power:
+    - 'on'
+    - 'off'
+- id: gh_pump
+  type: water_pump
+  room: greenhouse
+  description: Drip irrigation pump
+  states:
+    power:
+    - 'on'
+    - 'off'
+environment:
+- id: temp_gh
+  room: greenhouse
+  kind: numeric
+  description: Greenhouse air temperature (C)
+  values: []
+- id: frost_warning
+  room: home
+  kind: boolean
+  description: Frost warning from the weather service
+  values: []
+- id: home_mode
+  room: home
+  kind: categorical
+  description: Household mode
+  values:
+  - home
+  - away
+  - night
+effects:
+- source: gh_heater.power
+  when: 'on'
+  target: temp_gh
+  effect: increase
+  kind: environmental
+  description: The heater warms the greenhouse
+- source: gh_vent.position
+  when: open
+  target: temp_gh
+  effect: decrease
+  kind: environmental
+  description: An open vent releases warm air
+- source: plug_outdoor.power
+  when: 'off'
+  target: gh_heater.power
+  effect: set
+  value: 'off'
+  kind: physical
+  description: The greenhouse heater is plugged into the outdoor plug
+rules:
+- id: R1
+  text: When a frost warning is issued, turn on the greenhouse heater.
+  trigger:
+    type: env
+    ref: frost_warning
+    op: ==
+    value: true
+  conditions: []
+  actions:
+  - ref: gh_heater.power
+    value: 'on'
+- id: R2
+  text: When the greenhouse is warmer than 18 C, open the roof vent.
+  trigger:
+    type: env
+    ref: temp_gh
+    op: '>'
+    value: 18
+  conditions: []
+  actions:
+  - ref: gh_vent.position
+    value: open
+- id: R3
+  text: At 22:00 turn off the outdoor plug to save electricity.
+  trigger:
+    type: time
+    at: '22:00'
+    op: ==
+  conditions: []
+  actions:
+  - ref: plug_outdoor.power
+    value: 'off'
+- id: R4
+  text: At 06:00 turn on the grow lights.
+  trigger:
+    type: time
+    at: 06:00
+    op: ==
+  conditions: []
+  actions:
+  - ref: grow_lights.power
+    value: 'on'
+- id: R5
+  text: When the greenhouse is colder than 5 C, close the roof vent.
+  trigger:
+    type: env
+    ref: temp_gh
+    op: <
+    value: 5
+  conditions: []
+  actions:
+  - ref: gh_vent.position
+    value: closed
+- id: R6
+  text: At 22:00 turn off the greenhouse heater.
+  trigger:
+    type: time
+    at: '22:00'
+    op: ==
+  conditions:
+  - type: state
+    ref: frost_warning
+    op: ==
+    value: false
+  actions:
+  - ref: gh_heater.power
+    value: 'off'
+cases:
+- id: s20_c1
+  rules:
+  - R1
+  - R2
+  label: conflict
+  type: semantic
+  justification: Frost heating pushes the greenhouse above 18 C, R2 opens the vent
+    and releases the heat during frost.
+  situation: 'A frost warning: R1 heats the greenhouse above 18 C.'
+  undesired_outcome: R2 opens the roof vent during frost and releases the heat; heater
+    and vent fight each other.
+  key_nodes:
+  - gh_heater
+  - temp_gh
+  hard: false
+- id: s20_c2
+  rules:
+  - R3
+  - R1
+  label: conflict
+  type: physical
+  justification: The outdoor plug feeds the heater; switching it off at 22:00 disables
+    frost protection overnight.
+  situation: A frost warning is active at or after 22:00.
+  undesired_outcome: R3 cuts the outdoor plug that feeds the greenhouse heater; frost
+    protection is lost overnight.
+  key_nodes:
+  - plug_outdoor
+  - gh_heater
+  hard: false
+- id: s20_c3
+  rules:
+  - R4
+  - R2
+  label: clean
+  justification: LED grow lights do not meaningfully affect the greenhouse temperature
+    in this model; no relation to the vent.
+  situation: 'Near miss: Grow lights switch on, but they are not modelled as heating
+    the greenhouse.'
+  key_nodes: []
+  hard: true
+- id: s20_c4
+  rules:
+  - R2
+  - R5
+  label: clean
+  justification: Open above 18 C, close below 5 C - non-overlapping thresholds.
+  situation: 'Near miss: Opposite vent actions under non-overlapping thresholds.'
+  key_nodes: []
+  hard: true
+- id: s20_c5
+  rules:
+  - R1
+  - R2
+  - R3
+  label: conflict
+  type: physical
+  justification: Three-rule interaction; the dominant hazard is the outdoor plug cutting
+    the frost heater at 22:00.
+  situation: 'Frost night: R1 heats, R2 vents above 18 C and R3 cuts the heater''s
+    plug at 22:00.'
+  undesired_outcome: Frost protection is lost (plug off) and heat is vented while
+    it runs; plants are exposed to frost.
+  key_nodes:
+  - plug_outdoor
+  - gh_heater
+  hard: false
+- id: s20_c6
+  rules:
+  - R1
+  - R6
+  label: conflict
+  type: logical
+  justification: During a frost warning R1 keeps the heater on while R6 switches it
+    off at 22:00.
+  situation: A frost warning is active at 22:00.
+  undesired_outcome: R1 keeps the greenhouse heater on while R6 switches it off; frost
+    protection depends on execution order.
+  key_nodes:
+  - gh_heater
+  hard: false
+split: dev
+family: greenhouse
+home_conflicts: []
+home_clean_notes: {}

@@ -1,5 +1,7 @@
 id: s15_window_ac
-name: Summer house - windows, AC and rain
+name: Country cottage
+split: dev
+family: window_ac
 description: Air conditioning, windows, and a rain sensor near the garden sprinkler.
 rooms: [living_room, garden, bedroom]
 devices:
@@ -98,17 +100,23 @@ cases:
     label: conflict
     type: semantic
     justification: The open window heats the room above 27 C, so the AC runs against an open window.
+    situation: "At 10:00 on a hot day: R2 opens the window and the living room rises above 27 C."
+    undesired_outcome: "R1 runs the AC while the window is open; energy is wasted cooling the outside."
     key_nodes: [window_living, temp_living]
   - id: s15_c2
     rules: [R3, R4]
     label: conflict
     type: semantic
     justification: The sprinkler wets the rain sensor, closing the skylight on a sunny day (false rain).
+    situation: "At 14:00 on a dry, sunny day."
+    undesired_outcome: "The sprinkler wets the rain sensor and R4 closes the skylight although it is not raining (false rain)."
     key_nodes: [sprinkler, rain_sensor]
   - id: s15_c3
     rules: [R5, R4]
     label: clean
     justification: Opening the bedroom window for CO2 does not affect the rain sensor; window and skylight are different devices.
+    situation: "Near miss: A window opens, but it does not affect the rain sensor."
+    hard: true
   - id: s15_c4
     rules: [R5, R1]
     label: clean
@@ -118,4 +126,6 @@ cases:
     label: conflict
     type: logical
     justification: On a hot morning the AC is cooling at 10:00; R2 opens the window and R6 closes it again.
+    situation: "At 10:00 on a hot morning while the AC is cooling."
+    undesired_outcome: "R2 opens the window and R6 closes it again; the window state flips."
     key_nodes: [window_living]

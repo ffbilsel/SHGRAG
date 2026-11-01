@@ -1,0 +1,354 @@
+[
+  {
+    "scenario": "t01_basement_sump",
+    "rule": "R1",
+    "app": "Dry the Wetspot",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/dry-the-wetspot.src/dry-the-wetspot.groovy",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t01_basement_sump",
+    "rule": "R2",
+    "app": "Dry the Wetspot",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/dry-the-wetspot.src/dry-the-wetspot.groovy",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t01_basement_sump",
+    "rule": "R3",
+    "app": "Energy Saver",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/energy-saver.src/energy-saver.groovy",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t01_basement_sump",
+    "rule": "R4",
+    "app": "Once a Day",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/once-a-day.src/once-a-day.groovy",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t01_basement_sump",
+    "rule": "R5",
+    "app": "Close The Valve",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/close-the-valve.src/close-the-valve.groovy",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t01_basement_sump",
+    "rule": "R6",
+    "app": "Once a Day",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/once-a-day.src/once-a-day.groovy",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t02_media_room",
+    "rule": "R1",
+    "app": "Once a Day",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/once-a-day.src/once-a-day.groovy",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t02_media_room",
+    "rule": "R2",
+    "app": "Turn It On When It Opens",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/turn-it-on-when-it-opens.src/turn-it-on-when-it-opens.groovy",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t02_media_room",
+    "rule": "R3",
+    "app": "Once a Day",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/once-a-day.src/once-a-day.groovy",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t02_media_room",
+    "rule": "R4",
+    "app": "Darken Behind Me",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/darken-behind-me.src/darken-behind-me.groovy",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t02_media_room",
+    "rule": "R5",
+    "app": "It's Too Hot",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/its-too-hot.src/its-too-hot.groovy",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t02_media_room",
+    "rule": "R6",
+    "app": "Smart Nightlight",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/smart-nightlight.src/smart-nightlight.groovy",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t02_media_room",
+    "rule": "R7",
+    "app": "Smart Nightlight",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/smart-nightlight.src/smart-nightlight.groovy",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t03_steam_shower",
+    "rule": "R1",
+    "app": "Once a Day",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/once-a-day.src/once-a-day.groovy",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t03_steam_shower",
+    "rule": "R3",
+    "app": "Lock It When I Leave",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/lock-it-when-i-leave.src/lock-it-when-i-leave.groovy",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t03_steam_shower",
+    "rule": "R4",
+    "app": "Unlock It When I Arrive",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/unlock-it-when-i-arrive.src/unlock-it-when-i-arrive.groovy",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t03_steam_shower",
+    "rule": "R5",
+    "app": "It's Too Hot",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/its-too-hot.src/its-too-hot.groovy",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t03_steam_shower",
+    "rule": "R6",
+    "app": "Once a Day",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/once-a-day.src/once-a-day.groovy",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t04_pool",
+    "rule": "R1",
+    "app": "Once a Day",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/once-a-day.src/once-a-day.groovy",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t04_pool",
+    "rule": "R2",
+    "app": "It's Too Cold",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/its-too-cold.src/its-too-cold.groovy",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t04_pool",
+    "rule": "R3",
+    "app": "Once a Day",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/once-a-day.src/once-a-day.groovy",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t04_pool",
+    "rule": "R4",
+    "app": "Virtual Thermostat",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/virtual-thermostat.src/virtual-thermostat.groovy",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t04_pool",
+    "rule": "R5",
+    "app": "When It's Going To Rain",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/when-its-going-to-rain.src/when-its-going-to-rain.groovy",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t04_pool",
+    "rule": "R6",
+    "app": "Once a Day",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/once-a-day.src/once-a-day.groovy",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t04_pool",
+    "rule": "R7",
+    "app": "Big Turn OFF",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/big-turn-off.src/big-turn-off.groovy",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t05_mode_chain",
+    "rule": "R1",
+    "app": "Bon Voyage",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/bon-voyage.src/bon-voyage.groovy",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t05_mode_chain",
+    "rule": "R2",
+    "app": "Good Night",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/good-night.src/good-night.groovy",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t05_mode_chain",
+    "rule": "R3",
+    "app": "Keep Me Cozy",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/keep-me-cozy.src/keep-me-cozy.groovy",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t05_mode_chain",
+    "rule": "R4",
+    "app": "Keep Me Cozy",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/keep-me-cozy.src/keep-me-cozy.groovy",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t05_mode_chain",
+    "rule": "R5",
+    "app": "Rise and Shine",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/rise-and-shine.src/rise-and-shine.groovy",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t05_mode_chain",
+    "rule": "R6",
+    "app": "Cameras On When I'm Away",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/cameras-on-when-im-away.src/cameras-on-when-im-away.groovy",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t06_bedroom_ventilation",
+    "rule": "R1",
+    "app": "Once a Day",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/once-a-day.src/once-a-day.groovy",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t06_bedroom_ventilation",
+    "rule": "R3",
+    "app": "Once a Day",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/once-a-day.src/once-a-day.groovy",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t07_driveway",
+    "rule": "R1",
+    "app": "Motion-activated Light (core blueprint)",
+    "url": "https://github.com/home-assistant/core/blob/dev/homeassistant/components/automation/blueprints/motion_light.yaml",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t07_driveway",
+    "rule": "R2",
+    "app": "Light Follows Me",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/light-follows-me.src/light-follows-me.groovy",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t07_driveway",
+    "rule": "R3",
+    "app": "Smart Security",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/smart-security.src/smart-security.groovy",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t07_driveway",
+    "rule": "R4",
+    "app": "Sunrise/Sunset",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/sunrise-sunset.src/sunrise-sunset.groovy",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t07_driveway",
+    "rule": "R5",
+    "app": "Once a Day",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/once-a-day.src/once-a-day.groovy",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t07_driveway",
+    "rule": "R6",
+    "app": "Sunrise/Sunset",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/sunrise-sunset.src/sunrise-sunset.groovy",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t08_awning",
+    "rule": "R1",
+    "app": "Brighten Dark Places",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/brighten-dark-places.src/brighten-dark-places.groovy",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t08_awning",
+    "rule": "R4",
+    "app": "It's Too Cold",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/its-too-cold.src/its-too-cold.groovy",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t08_awning",
+    "rule": "R5",
+    "app": "Once a Day",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/once-a-day.src/once-a-day.groovy",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t08_awning",
+    "rule": "R6",
+    "app": "Once a Day",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/once-a-day.src/once-a-day.groovy",
+    "ok": true,
+    "error": null
+  },
+  {
+    "scenario": "t08_awning",
+    "rule": "R7",
+    "app": "When It's Going To Rain",
+    "url": "https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/when-its-going-to-rain.src/when-its-going-to-rain.groovy",
+    "ok": true,
+    "error": null
+  }
+]

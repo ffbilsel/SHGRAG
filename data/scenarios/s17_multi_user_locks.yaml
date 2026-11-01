@@ -1,5 +1,7 @@
 id: s17_multi_user_locks
-name: Family house - multi-user door and gate rules
+name: Terraced house
+split: dev
+family: multi_user_locks
 description: Parents and teenagers configured door, gate and porch light rules separately.
 rooms: [entrance, garden, home]
 devices:
@@ -61,6 +63,8 @@ cases:
     label: conflict
     type: logical
     justification: When the teenager comes home after 23:00, R1 unlocks and R2 immediately relocks the door (lock-out / oscillation).
+    situation: "The teenager's phone arrives home between 23:00 and 06:00."
+    undesired_outcome: "R1 unlocks the door and R2 immediately relocks it; the teenager is locked out or the lock oscillates."
     key_nodes: [lock_front]
   - id: s17_c2
     rules: [R3, R4]

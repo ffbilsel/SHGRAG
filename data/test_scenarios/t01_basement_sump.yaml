@@ -1,0 +1,170 @@
+id: t01_basement_sump
+name: Brick house
+split: test
+family: basement_sump_power_meter
+description: Sump pump, freezer and dehumidifier on a smart basement circuit relay; a whole-home power meter drives load shedding.
+rooms: [basement, laundry, home]
+devices:
+  - id: relay_basement
+    type: circuit_relay
+    room: basement
+    description: Smart relay on the basement circuit (sockets for the sump pump, chest freezer and dehumidifier)
+    states: {power: [on, off]}
+  - id: sump_pump
+    type: sump_pump
+    room: basement
+    description: Sump pump with a smart switch, plugged into a basement socket
+    states: {power: [on, off]}
+  - id: freezer
+    type: chest_freezer
+    room: basement
+    description: Chest freezer plugged into a basement socket
+    states: {power: [on, off]}
+  - id: plug_washer
+    type: smart_plug
+    room: laundry
+    description: Heavy-duty smart plug for the washing machine
+    states: {power: [on, off]}
+  - id: valve_laundry
+    type: water_valve
+    room: laundry
+    description: Motorised shut-off valve on the washing-machine supply hose
+    states: {state: [open, closed]}
+environment:
+  - id: moisture_basement
+    room: basement
+    kind: boolean
+    description: Water sensor on the basement floor next to the sump pit
+  - id: moisture_laundry
+    room: laundry
+    kind: boolean
+    description: Water sensor under the washing machine
+  - id: home_power
+    room: home
+    kind: numeric
+    description: Whole-home power meter reading in watts
+effects:
+  - source: relay_basement.power
+    when: off
+    target: sump_pump.power
+    effect: set
+    value: off
+    kind: physical
+    description: The sump pump is plugged into a socket on the basement circuit
+  - source: relay_basement.power
+    when: off
+    target: freezer.power
+    effect: set
+    value: off
+    kind: physical
+    description: The chest freezer is plugged into a socket on the basement circuit
+  - source: plug_washer.power
+    when: on
+    target: home_power
+    effect: increase
+    kind: environmental
+    description: The washing machine heats water with a 2.5 kW element
+rules:
+  - id: R1
+    text: When water is detected on the basement floor, turn on the sump pump.
+    trigger: {type: env, ref: moisture_basement, value: true}
+    actions: [{ref: sump_pump.power, value: on}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: Dry the Wetspot
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/dry-the-wetspot.src/dry-the-wetspot.groovy
+      excerpt: Turns switch on and off based on moisture sensor input.
+      adaptation: The generic switch is a sump pump; the "on when wet" half of the app.
+  - id: R2
+    text: When the basement floor is dry again, turn off the sump pump.
+    trigger: {type: env, ref: moisture_basement, value: false}
+    actions: [{ref: sump_pump.power, value: off}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: Dry the Wetspot
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/dry-the-wetspot.src/dry-the-wetspot.groovy
+      excerpt: Turns switch on and off based on moisture sensor input.
+      adaptation: The "off when dry" half of the app.
+  - id: R3
+    text: When the home uses more than 6000 W, switch off the basement circuit to shed load.
+    trigger: {type: env, ref: home_power, op: ">", value: 6000}
+    actions: [{ref: relay_basement.power, value: off}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: Energy Saver
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/energy-saver.src/energy-saver.groovy
+      excerpt: Turn things off if you're using too much energy
+      adaptation: Threshold 6000 W; the switch to turn off is the basement circuit relay.
+  - id: R4
+    text: At 02:00 turn on the washing machine plug (off-peak tariff).
+    trigger: {type: time, at: "02:00"}
+    actions: [{ref: plug_washer.power, value: on}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: Once a Day
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/once-a-day.src/once-a-day.groovy
+      excerpt: Turn on one or more switches at a specified time and turn them off at a later time.
+      adaptation: The "on" time of the app, used for an off-peak wash.
+  - id: R5
+    text: When water is detected under the washing machine, close the washing-machine supply valve.
+    trigger: {type: env, ref: moisture_laundry, value: true}
+    actions: [{ref: valve_laundry.state, value: closed}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: Close The Valve
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/close-the-valve.src/close-the-valve.groovy
+      excerpt: Close a selected valve if moisture is detected
+      adaptation: Notifications dropped; the valve is on the washer supply hose.
+  - id: R6
+    text: At 04:00 turn off the washing machine plug.
+    trigger: {type: time, at: "04:00"}
+    actions: [{ref: plug_washer.power, value: off}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: Once a Day
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/once-a-day.src/once-a-day.groovy
+      excerpt: Turn on one or more switches at a specified time and turn them off at a later time.
+      adaptation: The "off" time of the app.
+cases:
+  - id: t01_c1
+    rules: [R1, R3]
+    label: conflict
+    type: physical
+    justification: The load-shedding rule switches off the basement circuit, which also powers the sump pump that R1 turns on when the basement floods.
+    situation: "Water reaches the basement floor while the home draws more than 6000 W (e.g. washing at night)."
+    undesired_outcome: "The basement circuit is off, so the sump pump that R1 switches on has no power and the basement floods."
+    key_nodes: [relay_basement, sump_pump]
+  - id: t01_c2
+    rules: [R4, R3]
+    label: conflict
+    type: semantic
+    justification: Starting the washer at 02:00 raises the home's power above 6000 W, which makes R3 cut the basement circuit every night.
+    situation: "At 02:00 every night, once the washer's heating element pushes the reading above 6000 W."
+    undesired_outcome: "R3 switches off the basement circuit, so the freezer (and the sump pump) lose power every night."
+    key_nodes: [plug_washer, home_power, relay_basement]
+  - id: t01_c3
+    rules: [R1, R2]
+    label: clean
+    justification: Pump on when wet and off when dry is a designed control loop with mutually exclusive triggers.
+    situation: "Near miss: opposite actions on the same pump, but under mutually exclusive sensor states."
+    hard: true
+  - id: t01_c4
+    rules: [R4, R6]
+    label: clean
+    justification: Washer plug on at 02:00 and off at 04:00 is a normal schedule.
+  - id: t01_c5
+    rules: [R5, R1]
+    label: clean
+    justification: Both rules react to water, but on different sensors and different devices; the washer valve does not affect the sump pump.
+    situation: "Near miss: two water-triggered rules in the same home, with no shared device or dependency."
+    hard: true
+home_conflicts: []
+home_clean_notes:
+  "R2+R3": "Both can switch the pump off; consistent, not conflicting."
+  "R3+R6": "R6 switching the washer off lowers power; it does not trigger R3."

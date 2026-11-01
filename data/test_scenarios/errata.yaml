@@ -1,0 +1,16 @@
+# Label corrections found AFTER the frozen test run (pooled review of scan and
+# detection outputs, 2026-11-01). The frozen labels in the scenario files are
+# NOT changed: they stay the pre-registered ground truth, and results are
+# reported with both. `--errata` applies these corrections when loading.
+- case: t07_c4
+  label: conflict
+  type: physical
+  situation: "Every evening after the first night: R5 switched the outdoor circuit off at 23:00 and no rule switches it back on."
+  undesired_outcome: "R4 turns the garden lights on at 19:00, but their circuit has no power; the garden stays dark every evening."
+  reason: "The author's clean label assumed the 23:00 cut only ends the evening, but nothing in the home restores the relay, so R4 never works again. Flagged by every LLM condition in detection and in 9 scan predictions."
+- case: t03_c2
+  label: conflict
+  type: semantic
+  situation: "During the 06:30-07:00 steam session, once bathroom humidity exceeds 75 %."
+  undesired_outcome: "The extractor fan removes the steam that R1 is producing; the two devices work against each other."
+  reason: "Inconsistent with the dev labelling: s09_c1 (humidifier raises humidity -> dehumidifier runs against it) is a conflict, and this is the same pattern. Flagged by most conditions."

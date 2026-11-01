@@ -1,5 +1,7 @@
 id: s18_shades_solar
-name: Office at home - solar heat gain, shades and heating
+name: Duplex apartment
+split: dev
+family: shades_solar
 description: Exterior shades, a radiator valve and a desk heater in the home office.
 rooms: [office, home]
 devices:
@@ -84,18 +86,26 @@ cases:
     label: conflict
     type: semantic
     justification: Closing the shades removes solar gain, the office cools below 20 C and the radiator heating starts - energy is wasted.
+    situation: "A cool day: R1 closes the shades at 09:00 and solar gain is lost."
+    undesired_outcome: "The office cools below 20 C and R2 starts the radiator; heating replaces free solar gain (energy waste)."
     key_nodes: [shades_office, temp_office]
   - id: s18_c2
     rules: [R2, R4]
     label: clean
     justification: Heat below 20 C and stop above 24 C is a normal hysteresis band.
+    situation: "Near miss: Opposite radiator actions under non-overlapping thresholds."
+    hard: true
   - id: s18_c3
     rules: [R3, R5]
     label: clean
     justification: Both rules turn the desk heater off when away (one directly, one via its plug) - consistent, not conflicting.
+    situation: "Near miss: Two away-mode rules act on the desk heater, but both turn it off."
+    hard: true
   - id: s18_c4
     rules: [R1, R6]
     label: conflict
     type: logical
     justification: Both rules fire at 09:00 and command opposite shade positions.
+    situation: "At 09:00 every day."
+    undesired_outcome: "R1 closes and R6 opens the same shades at the same time; the final position depends on execution order."
     key_nodes: [shades_office]

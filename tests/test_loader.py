@@ -55,3 +55,16 @@ def test_conflict_case_requires_type():
             "rules": [{"id": "R1", "text": "t", "trigger": {"type": "time", "at": "1:00"}, "actions": [{"ref": "d.p", "value": "a"}]}],
             "cases": [{"id": "c", "rules": ["R1"], "label": "conflict", "justification": "j"}],
         })
+
+
+def test_home_names_do_not_hint_at_conflicts(scenarios):
+    """The home name is shown to the LLM, so it must not describe the rules,
+    devices or dependencies (e.g. "network dependency chain")."""
+    names = [s.name for s in scenarios.values()]
+    assert len(set(names)) == len(names)
+    for s in scenarios.values():
+        words = set(s.name.lower().replace("-", " ").split())
+        slug = set(s.id.split("_")[1:])
+        ids = {p for d in s.devices for p in d.id.split("_")} | {p for e in s.environment for p in e.id.split("_")}
+        assert " - " not in s.name, s.name
+        assert not words & (slug | ids), (s.id, s.name, words & (slug | ids))

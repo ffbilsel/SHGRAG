@@ -1,0 +1,173 @@
+id: t04_pool
+name: Hillside villa
+split: test
+family: pool_flow_interlock
+description: Pool pump and gas pool heater; the heater has a flow switch and only fires while water circulates.
+rooms: [pool_area, terrace, home]
+devices:
+  - id: pool_pump
+    type: pool_pump
+    room: pool_area
+    description: Circulation pump
+    states: {power: [on, off]}
+  - id: pool_heater
+    type: gas_pool_heater
+    room: pool_area
+    description: Gas pool heater with a built-in flow switch
+    states: {heating: [on, off]}
+  - id: pool_cover
+    type: automatic_cover
+    room: pool_area
+    description: Motorised pool cover
+    states: {position: [open, closed]}
+  - id: pool_lights
+    type: lights
+    room: pool_area
+    description: Underwater pool lights
+    states: {power: [on, off]}
+environment:
+  - id: pool_temp
+    room: pool_area
+    kind: numeric
+    description: Pool water temperature
+  - id: rain_expected
+    room: home
+    kind: boolean
+    description: Weather service says rain is expected in the next hours
+  - id: home_mode
+    room: home
+    kind: categorical
+    values: [home, away, night]
+    description: Household mode
+effects:
+  - source: pool_pump.power
+    when: off
+    target: pool_heater.heating
+    effect: set
+    value: off
+    kind: physical
+    description: The heater's flow switch stops the burner when no water circulates
+  - source: pool_heater.heating
+    when: on
+    target: pool_temp
+    effect: increase
+    kind: environmental
+    description: The heater warms the pool water
+rules:
+  - id: R1
+    text: At 22:00 turn off the pool pump (night tariff).
+    trigger: {type: time, at: "22:00"}
+    actions: [{ref: pool_pump.power, value: off}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: Once a Day
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/once-a-day.src/once-a-day.groovy
+      excerpt: Turn on one or more switches at a specified time and turn them off at a later time.
+      adaptation: The "off" time of the app, for the pool pump.
+  - id: R2
+    text: When the pool water is colder than 26 C, turn on the pool heater.
+    trigger: {type: env, ref: pool_temp, op: "<", value: 26}
+    actions: [{ref: pool_heater.heating, value: on}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: It's Too Cold
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/its-too-cold.src/its-too-cold.groovy
+      excerpt: when it drops below your setting get a text and/or turn on a heater
+      adaptation: Notification dropped; the heater is the pool heater and the sensor is in the water.
+  - id: R3
+    text: At 08:00 turn on the pool pump.
+    trigger: {type: time, at: "08:00"}
+    actions: [{ref: pool_pump.power, value: on}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: Once a Day
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/once-a-day.src/once-a-day.groovy
+      excerpt: Turn on one or more switches at a specified time and turn them off at a later time.
+      adaptation: The "on" time of the app, for the pool pump.
+  - id: R4
+    text: When the pool water is warmer than 29 C, turn off the pool heater.
+    trigger: {type: env, ref: pool_temp, op: ">", value: 29}
+    actions: [{ref: pool_heater.heating, value: off}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: Virtual Thermostat
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/virtual-thermostat.src/virtual-thermostat.groovy
+      excerpt: Control a space heater or window air conditioner in conjunction with any temperature sensor
+      adaptation: The upper threshold of the thermostat logic, applied to the pool heater.
+  - id: R5
+    text: When rain is expected, close the pool cover.
+    trigger: {type: env, ref: rain_expected, value: true}
+    actions: [{ref: pool_cover.position, value: closed}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: When It's Going To Rain
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/when-its-going-to-rain.src/when-its-going-to-rain.groovy
+      excerpt: Is your shed closed? Are your windows shut?
+      adaptation: The app only notifies; here the rule closes the pool cover.
+  - id: R6
+    text: At 20:00 turn on the pool lights.
+    trigger: {type: time, at: "20:00"}
+    actions: [{ref: pool_lights.power, value: on}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: Once a Day
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/once-a-day.src/once-a-day.groovy
+      excerpt: Turn on one or more switches at a specified time and turn them off at a later time.
+      adaptation: The "on" time of the app, for the pool lights.
+  - id: R7
+    text: When the home switches to away mode, turn off the pool heater.
+    trigger: {type: env, ref: home_mode, value: away}
+    actions: [{ref: pool_heater.heating, value: off}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: Big Turn OFF
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/big-turn-off.src/big-turn-off.groovy
+      excerpt: Turn your lights off when the SmartApp is tapped or activated
+      adaptation: Activated by the away mode; the device turned off is the pool heater.
+cases:
+  - id: t04_c1
+    rules: [R1, R2]
+    label: conflict
+    type: physical
+    justification: When the pump stops at 22:00, the heater's flow switch stops the burner, so R2's heating has no effect overnight.
+    situation: "The pool water is (or becomes) colder than 26 C after 22:00."
+    undesired_outcome: "R2 calls for heat, but without circulation the heater does not fire; the pool cools all night."
+    key_nodes: [pool_pump, pool_heater]
+  - id: t04_c2
+    rules: [R2, R4]
+    label: clean
+    justification: Heat below 26 C and stop above 29 C is a hysteresis band with non-overlapping thresholds.
+    situation: "Near miss: opposite actions on the heater, but under non-overlapping thresholds."
+    hard: true
+  - id: t04_c3
+    rules: [R1, R3]
+    label: clean
+    justification: Pump off at 22:00 and on at 08:00 is a normal daily schedule.
+  - id: t04_c4
+    rules: [R5, R2]
+    label: clean
+    justification: Closing the cover is unrelated to the heater rule in this home model.
+  - id: t04_c5
+    rules: [R7, R2]
+    label: conflict
+    type: logical
+    justification: In away mode R7 turns the heater off, but whenever the water drops below 26 C R2 turns it back on.
+    situation: "The home is in away mode and the water temperature falls below 26 C."
+    undesired_outcome: "R2 re-enables the heater that R7 switched off for away mode; gas is burnt for an empty house."
+    key_nodes: [pool_heater]
+  - id: t04_c6
+    rules: [R6, R1]
+    label: clean
+    justification: Pool lights and the pump are independent.
+home_conflicts: []
+home_clean_notes:
+  "R1+R4": "The pump stopping turns the heater off; R4 also turns it off. Consistent."
+  "R1+R7": "Both reduce heating; consistent."
+  "R2+R3": "The pump starting at 08:00 lets the heater work again; no conflict."

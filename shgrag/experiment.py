@@ -8,7 +8,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict
 from pathlib import Path
 
-from .evaluation import TYPES, error_cases, mcnemar, summarize
+from .evaluation import TYPES, cluster_bootstrap, error_cases, mcnemar, paired_by_home, paired_case_table, summarize
 from .llm import LLMClient
 from .reasoners import LLM_CONDITIONS, make_reasoner
 from .schema import Case, Scenario
@@ -67,12 +67,33 @@ def run_experiment(
             f.write(json.dumps(r) + "\n")
     meta = dict(
         conditions=conditions, runs=runs, n_cases=sum(len(s.cases) for s in scenarios),
+        prompt_fingerprint=prompt_fingerprint(),
+        splits=sorted({s.split for s in scenarios}),
         model=llm.config.model if llm else None, effort=llm.config.effort if llm else None,
         backend=llm.config.backend if llm else None,
     )
     (out_dir / "run_config.json").write_text(json.dumps(meta, indent=2))
     write_report(records, out_dir, meta)
     return records
+
+
+def prompt_fingerprint() -> str:
+    """Hash of the files that define what the LLM sees (prompts, retrieval,
+    serialisation). Recorded with every run, so a test-set run can be shown to
+    use the prompt frozen on the dev set."""
+    import hashlib
+
+    import inspect
+
+    from . import repair, scan
+
+    root = Path(__file__).resolve().parent
+    h = hashlib.sha256()
+    for name in ("prompts.py", "retriever.py", "graph_builder.py"):
+        h.update(name.encode() + (root / name).read_bytes())
+    for obj in (scan.SCAN_SYSTEM_PROMPT, inspect.getsource(scan.scan_prompt), repair.REPAIR_SYSTEM_PROMPT, inspect.getsource(repair.repair_prompt)):
+        h.update(obj.encode())
+    return h.hexdigest()[:16]
 
 
 def load_records(out_dir: Path) -> list[dict]:
@@ -90,6 +111,9 @@ def _pm(agg: dict, key: str, pct: bool = True) -> str:
     return f"{100 * m:.1f} ± {100 * s:.1f}" if pct else f"{m:.1f} ± {s:.1f}"
 
 
+PAIRS = [("text", "graph"), ("text", "text_deps"), ("text_deps", "graph"), ("graph_noaffects", "graph"), ("text", "symbolic")]
+
+
 def tables_markdown(summary: dict, records: list[dict], meta: dict) -> str:
     conds = list(summary)
     lines = [
@@ -97,11 +121,12 @@ def tables_markdown(summary: dict, records: list[dict], meta: dict) -> str:
         "",
         f"Model: `{meta.get('model')}` · effort: `{meta.get('effort')}` · runs: {meta.get('runs')} · cases: {meta.get('n_cases')}",
         "",
-        "Values are mean ± std across runs (percent).",
+        "Values are mean ± std across runs (percent). `API/format errors` counts calls that returned no "
+        "valid structured answer (API failure, refusal, schema violation); misclassifications are the FP/FN columns.",
         "",
         "## Overall conflict-vs-clean detection",
         "",
-        "| Condition | Precision | Recall | F1 | Accuracy | FP | FN | Errors | Run agreement |",
+        "| Condition | Precision | Recall | F1 | Accuracy | FP | FN | API/format errors | Run agreement |",
         "|---|---|---|---|---|---|---|---|---|",
     ]
     for c in conds:
@@ -134,16 +159,47 @@ def tables_markdown(summary: dict, records: list[dict], meta: dict) -> str:
 
     lines += ["", "## Explanation grounding (automatic proxy)", "",
               "Share of correctly flagged conflicts whose explanation/evidence mentions all ground-truth key nodes. "
-              "The required 0/1 expert check uses `annotations.csv`.", "", "| Condition | Grounded |", "|---|---|"]
+              "This proxy only checks that key nodes are named; it does not show that direction, steps or timing are right. "
+              "The expert rubric is built with `python -m shgrag rubric-sheet` (docs/annotation_guidelines.md).", "", "| Condition | Grounded |", "|---|---|"]
     for c in conds:
         lines.append(f"| {c} | {_pm(summary[c]['aggregate'], 'explanation_proxy')} |")
 
-    pairs = [(a, b) for a, b in [("text", "graph"), ("graph_noaffects", "graph"), ("text", "symbolic")] if a in conds and b in conds]
+    pairs = [(a, b) for a, b in PAIRS if a in conds and b in conds]
+    boot = cluster_bootstrap(records, pairs)
+    lines += ["", f"## Home-level 95% confidence intervals (cluster bootstrap over {boot['n_homes']} homes, {boot['n_boot']} resamples)", "",
+              "Whole homes are resampled with all their cases and runs, so cases of one home and repeated runs are not "
+              "treated as independent samples. Values pool all runs.", "",
+              "| Condition | Precision | Recall | F1 | Accuracy |", "|---|---|---|---|---|"]
+    for c in conds:
+        m = boot["conditions"][c]
+        lines.append(f"| {c} | " + " | ".join(f"{100*m[k]['value']:.1f} [{100*m[k]['lo']:.1f}, {100*m[k]['hi']:.1f}]" for k in ("precision", "recall", "f1", "accuracy")) + " |")
+    if boot["differences"]:
+        lines += ["", "### Paired differences (B − A, same cases, home-level CI)", "",
+                  "| A | B | ΔF1 [95% CI] | ΔAccuracy [95% CI] | P(Δ≤0) F1 | both correct | only A | only B | both wrong |", "|---|---|---|---|---|---|---|---|---|"]
+        for a, b in pairs:
+            d = boot["differences"][f"{b}-{a}"]
+            t = paired_case_table(records, a, b)
+            lines.append(
+                f"| {a} | {b} | {100*d['f1']['value']:+.1f} [{100*d['f1']['lo']:+.1f}, {100*d['f1']['hi']:+.1f}] | "
+                f"{100*d['accuracy']['value']:+.1f} [{100*d['accuracy']['lo']:+.1f}, {100*d['accuracy']['hi']:+.1f}] | "
+                f"{d['f1']['p_le_0']:.3f} | {t['both_correct']} | {t['only_a']} | {t['only_b']} | {t['both_wrong']} |"
+            )
+        main = [(a, b) for a, b in pairs if b == "graph"]
+        if main:
+            lines += ["", "### Per-home accuracy (mean over cases and runs)", "",
+                      "| Home | Cases | " + " | ".join(dict.fromkeys(c for p in main for c in p)) + " |", "|---|---|" + "---|" * len(dict.fromkeys(c for p in main for c in p))]
+            cols = list(dict.fromkeys(c for p in main for c in p))
+            per = {c: {row["home"]: row for row in paired_by_home(records, c, "graph")} for c in cols}
+            for h in sorted(per[cols[0]]):
+                lines.append(f"| {h} | {per[cols[0]][h]['n_cases']} | " + " | ".join(f"{per[c][h]['a']:.2f}" for c in cols) + " |")
+
     if pairs:
         lines += ["", "## Significance (exact McNemar, majority vote over runs)", "", "| A | B | only A correct | only B correct | p-value |", "|---|---|---|---|---|"]
         for a, b in pairs:
             m = mcnemar(records, a, b)
             lines.append(f"| {a} | {b} | {m['a_correct_only']} | {m['b_correct_only']} | {m['p_value']:.4f} |")
+        lines += ["", "McNemar uses one majority vote per case (cases treated as independent); the home-level bootstrap "
+                  "above is the more conservative estimate when cases of a home are correlated."]
 
     lines += ["", "## Error cases (majority vote)", ""]
     for c in conds:
@@ -192,8 +248,6 @@ def write_report(records: list[dict], out_dir: Path, meta: dict | None = None) -
     summary = summarize(records)
     (out_dir / "metrics.json").write_text(json.dumps(summary, indent=2))
     (out_dir / "results.md").write_text(tables_markdown(summary, records, meta))
-    if not (out_dir / "annotations.csv").exists():  # never overwrite expert labels
-        write_annotation_sheet(records, out_dir / "annotations.csv")
     try:
         from .visualize import plot_results
 

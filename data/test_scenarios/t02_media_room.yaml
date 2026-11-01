@@ -1,0 +1,177 @@
+id: t02_media_room
+name: Attic flat
+split: test
+family: hdmi_cec_media_and_self_lit_sensor
+description: Living room with a TV and AV receiver linked over HDMI-CEC, and a lamp that shines on the room's light sensor.
+rooms: [living_room, balcony, home]
+devices:
+  - id: tv
+    type: television
+    room: living_room
+    description: Smart TV, connected to the AV receiver by HDMI with CEC enabled
+    states: {power: [on, off]}
+  - id: av_receiver
+    type: av_receiver
+    room: living_room
+    description: AV receiver that also drives the balcony speakers
+    states: {power: [on, off]}
+  - id: lamp_living
+    type: floor_lamp
+    room: living_room
+    description: Smart floor lamp standing next to the multisensor on the bookshelf
+    states: {power: [on, off]}
+  - id: fan_ceiling
+    type: ceiling_fan
+    room: living_room
+    description: Ceiling fan
+    states: {power: [on, off]}
+environment:
+  - id: balcony_door_open
+    room: balcony
+    kind: boolean
+    description: Contact sensor on the balcony door
+  - id: motion_living
+    room: living_room
+    kind: boolean
+    description: Motion reading of the bookshelf multisensor
+  - id: lux_living
+    room: living_room
+    kind: numeric
+    description: Illuminance reading of the bookshelf multisensor
+  - id: temp_living
+    room: living_room
+    kind: numeric
+    description: Living room temperature
+effects:
+  - source: av_receiver.power
+    when: on
+    target: tv.power
+    effect: set
+    value: on
+    kind: physical
+    description: With HDMI-CEC, powering on the receiver wakes the TV
+  - source: lamp_living.power
+    when: on
+    target: lux_living
+    effect: increase
+    kind: environmental
+    description: The lamp shines directly on the multisensor's light sensor
+rules:
+  - id: R1
+    text: At 23:30 turn off the TV and the AV receiver.
+    trigger: {type: time, at: "23:30"}
+    actions: [{ref: tv.power, value: off}, {ref: av_receiver.power, value: off}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: Once a Day
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/once-a-day.src/once-a-day.groovy
+      excerpt: Turn on one or more switches at a specified time and turn them off at a later time.
+      adaptation: Only the "off" time is used, for the TV and receiver.
+  - id: R2
+    text: When the balcony door opens, turn on the AV receiver so music plays on the balcony speakers.
+    trigger: {type: env, ref: balcony_door_open, value: true}
+    actions: [{ref: av_receiver.power, value: on}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: Turn It On When It Opens
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/turn-it-on-when-it-opens.src/turn-it-on-when-it-opens.groovy
+      excerpt: Turn something on when an open/close sensor opens.
+      adaptation: The switched device is the AV receiver.
+  - id: R3
+    text: At 19:00 turn on the floor lamp.
+    trigger: {type: time, at: "19:00"}
+    actions: [{ref: lamp_living.power, value: on}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: Once a Day
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/once-a-day.src/once-a-day.groovy
+      excerpt: Turn on one or more switches at a specified time and turn them off at a later time.
+      adaptation: Only the "on" time is used, for the floor lamp.
+  - id: R4
+    text: When motion stops in the living room, turn off the floor lamp.
+    trigger: {type: env, ref: motion_living, value: false}
+    actions: [{ref: lamp_living.power, value: off}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: Darken Behind Me
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/darken-behind-me.src/darken-behind-me.groovy
+      excerpt: Turn your lights off after a period of no motion being observed.
+      adaptation: The delay is dropped; the light is the floor lamp.
+  - id: R5
+    text: When the living room is warmer than 27 C, turn on the ceiling fan.
+    trigger: {type: env, ref: temp_living, op: ">", value: 27}
+    actions: [{ref: fan_ceiling.power, value: on}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: It's Too Hot
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/its-too-hot.src/its-too-hot.groovy
+      excerpt: Monitor the temperature and when it rises above your setting
+      adaptation: Notification dropped; the appliance is a ceiling fan.
+  - id: R6
+    text: When motion is detected in the living room and it is darker than 30 lux, turn on the floor lamp.
+    trigger: {type: env, ref: motion_living, value: true}
+    conditions: [{type: env, ref: lux_living, op: "<", value: 30}]
+    actions: [{ref: lamp_living.power, value: on}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: Smart Nightlight
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/smart-nightlight.src/smart-nightlight.groovy
+      excerpt: Turns on lights when it's dark and motion is detected.
+      adaptation: The "turn on" half of the app; the light sensor is the multisensor on the bookshelf.
+  - id: R7
+    text: When the living room is brighter than 200 lux, turn off the floor lamp.
+    trigger: {type: env, ref: lux_living, op: ">", value: 200}
+    actions: [{ref: lamp_living.power, value: off}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: Smart Nightlight
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/smart-nightlight.src/smart-nightlight.groovy
+      excerpt: Turns lights off when it becomes light
+      adaptation: The "turn off when it becomes light" half of the app, with a 200 lux threshold.
+cases:
+  - id: t02_c1
+    rules: [R2, R1]
+    label: conflict
+    type: physical
+    justification: After R1 switches everything off at 23:30, opening the balcony door turns the receiver on, and HDMI-CEC wakes the TV as well.
+    situation: "The balcony door is opened after 23:30."
+    undesired_outcome: "The TV switches itself on in the night although R1 turned it off; it stays on until someone notices."
+    key_nodes: [av_receiver, tv]
+  - id: t02_c2
+    rules: [R6, R7]
+    label: conflict
+    type: semantic
+    justification: The lamp that R6 turns on shines on the light sensor, the reading jumps above 200 lux and R7 turns the lamp off again.
+    situation: "Someone moves in the dark living room (below 30 lux)."
+    undesired_outcome: "The lamp turns on and immediately off again; the room stays dark or flickers with every movement."
+    key_nodes: [lamp_living, lux_living]
+  - id: t02_c3
+    rules: [R3, R4]
+    label: clean
+    justification: Lamp on at 19:00 and off when the room empties is ordinary occupancy lighting; the triggers do not coincide.
+    situation: "Near miss: opposite actions on the same lamp."
+    hard: true
+  - id: t02_c4
+    rules: [R5, R2]
+    label: clean
+    justification: The ceiling fan and the receiver are unrelated; the receiver is not modelled as heating the room.
+  - id: t02_c5
+    rules: [R1, R5]
+    label: clean
+    justification: Switching the TV off at night does not affect the fan rule.
+home_conflicts:
+  - rules: [R3, R7]
+    type: semantic
+    justification: The lamp switched on at 19:00 raises the sensor reading above 200 lux and R7 switches it off.
+    situation: "At 19:00 when the lamp is switched on."
+    undesired_outcome: "The scheduled lamp goes off again within moments."
+home_clean_notes:
+  "R4+R6": "Lamp on with motion in the dark, off when motion stops: designed occupancy lighting."
+  "R3+R6": "R3's lamp raises the light level, which only matters to R6's darkness condition; R6 would switch on a lamp that is already on."

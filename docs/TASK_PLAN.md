@@ -40,12 +40,29 @@ Linear: [SHGRAG projesi](https://linear.app/ffbilsel/project/shgrag-f526f86c3d26
 | D5 ([FFB-9](https://linear.app/ffbilsel/issue/FFB-9)) | LLM reasoner (Claude, structured output) ve text-only baseline, aynı prompt ve şema | [P] §4 |
 | D6 ([FFB-10](https://linear.app/ffbilsel/issue/FFB-10)) | Deterministik symbolic checker (rule-based referans baseline) | [PhD] Obj.4 |
 | D7 ([FFB-11](https://linear.app/ffbilsel/issue/FFB-11)) | Değerlendirme: P/R/F1/Acc, tür bazında recall/F1, FP/FN, ablation, McNemar, stabilite, açıklama proxy'si, uzman 0/1 sayfası | [P] §5, §7 |
-| D8 ([FFB-12](https://linear.app/ffbilsel/issue/FFB-12)) | Testler: functional, direct-conflict, hidden-dependency, clean-case, ablation, pipeline (61 test) | [P] §6 |
+| D8 ([FFB-12](https://linear.app/ffbilsel/issue/FFB-12)) | Testler: functional, direct-conflict, hidden-dependency, clean-case, ablation, pipeline (63 test) | [P] §6 |
 | D9 ([FFB-13](https://linear.app/ffbilsel/issue/FFB-13)) | Streamlit demo, graph görselleri, dokümanlar | [P] §4, §9 |
+
+## Hoca geri bildirimi (2026-11-01) — durum
+
+| Not | Yapılan | Nerede |
+|---|---|---|
+| Bağımlılıkların düz metin verildiği koşul | `text_deps` koşulu. Model, sistem promptu ve şema aynı. Dev: F1 97.7 (graph 98.1, Δ +0.4 [−1.0, +2.5]); test: graph ile birebir aynı. | `prompts.py`, `results/main`, `results/test` |
+| Ayrı test kümesi, varyasyon sızıntısı yok | 8 yeni ev, 40 vaka; `MANIFEST.json` ile ilk koşudan önce donduruldu. Aile etiketleri ayrık; `leakage` raporu var. | `data/test_scenarios/`, `freeze.py`, `provenance.py` |
+| HA/SmartThings kaynakları kayıtlı ve kontrol edilmiş | 44 kural 24 örnekten uyarlandı; URL + birebir alıntı kayıtlı. `check-sources` ile 44/44 doğrulandı. | `sources_check.json` |
+| Etiket: hangi koşulda, hangi istenmeyen sonuç | Her çatışmada `situation` + `undesired_outcome` alanları; şema bunu zorunlu tutuyor. | `schema.py`, tüm YAML'lar |
+| Aday kural kümesinin seçimi açıklanmalı; tüm evden tarama | Raporda açıklandı (anotatör çifti seçiyor). Tüm ev taraması eklendi; pooled adjudication öncesi ve sonrası skorlar raporda. | `scan.py`, `results/scan_*` |
+| Onarım–doğrulama döngüsü (10–15 vaka) | 15 vaka. Yapılandırılmış öneri → onay → kopyaya uygulama → simülasyon + tüm evin yeniden kontrolü → tekrar deneme. Negatif kontroller 45/45 reddedildi. | `repair.py`, `simulate.py`, `data/repair/`, `results/repair` |
+| Uzman değerlendirmesi: yön, ara adım, zaman, varsayım; onarımda işlevin korunması | Kriter bazlı rubrik; yönergeler hazır. Örneklemde FP, FN ve zor temiz vakalar var. LLM-judge pilotu yapıldı. **Uzman doldurması bekliyor.** | `annotation.py`, `docs/annotation_guidelines.md`, `results/annotation/` |
+| Yanlış pozitifler ve zor temiz vakalar | 36 vaka `hard: true` olarak işaretli; raporda bunlar için ayrı bir bölüm var. | rapor §8.7 |
+| Tekrarlar bağımsız sayılmamalı; ev düzeyinde CI | Cluster bootstrap (evler yeniden örnekleniyor), eşleştirilmiş farklar, ev bazında tablo. | `evaluation.py`, tüm `results.md` |
+| "900 tahminde hata yok" ifadesi | Raporda ve durum raporunda düzeltildi: kastedilen API/çıktı biçimi hatası (0); sınıflandırma hataları FP/FN. | rapor §8.2 |
+
+Açık kalan (insan işi): rubriği uzmanın doldurması, gerekirse ikinci bir anotatör (κ); dev ve test etiketlerinin ikinci bir etiketleyici tarafından gözden geçirilmesi (`t02_c3` tartışmalı). Pilotun bulduğu iki onarım boşluğu (`s15`, `s19`), uzman onayından sonra niyet senaryolarına eklenecek.
 
 ## M1 — Capstone tamamlama (öncelik sırasıyla)
 
-Durum (2026-10-29): C4 ve C5 tamamlandı. API key olmadan, `--backend claude_code` ile çalıştırıldı; sonuçlar `results/main/` altında. Not: text-only prompt'taki ev adları bağımlılığa ipucu veriyor. C3 sonrasında ev adları çıkarılarak deney tekrarlanmalı (C7).
+Durum (2026-10-29): C4 ve C5 tamamlandı. API key olmadan, `--backend claude_code` ile çalıştırıldı; sonuçlar `results/main/` altında. Güncelleme (2026-10-31): Ev adları bağımlılığa ipucu veriyordu. Adlar nötrleştirildi (ör. "Two-bedroom flat"), `tests/test_loader.py` bunu kontrol ediyor ve deney tekrarlandı. Text F1 92.7'den 85.8'e düştü, graph 98.1'de kaldı. Fark artık anlamlı (McNemar p = 0.006). Eski run lokalde `results/main_named_homes/` altında. C3 sonrasında deney yine tekrarlanacak (C7).
 
 | Sıra | ID | Task | Öncelik | Bağımlılık | Kaynak |
 |---|---|---|---|---|---|

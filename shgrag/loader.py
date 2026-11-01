@@ -9,7 +9,8 @@ import yaml
 
 from .schema import Scenario
 
-DEFAULT_DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "scenarios"
+DEFAULT_DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "scenarios"  # dev split
+TEST_DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "test_scenarios"  # held-out split
 
 
 class _Loader(yaml.SafeLoader):
@@ -33,8 +34,29 @@ def load_scenario(path: str | Path) -> Scenario:
     return Scenario.model_validate(raw)
 
 
-def load_scenarios(data_dir: str | Path = DEFAULT_DATA_DIR) -> list[Scenario]:
-    paths = sorted(Path(data_dir).glob("*.yaml"))
+def apply_errata(scenarios: list[Scenario], errata_path: Path) -> list[Scenario]:
+    """Return copies of the scenarios with post-freeze label corrections applied."""
+    with open(errata_path, encoding="utf-8") as f:
+        fixes = {e["case"]: e for e in yaml.load(f, Loader=_Loader) or []}
+    out = []
+    for s in scenarios:
+        cases = []
+        for c in s.cases:
+            e = fixes.get(c.id)
+            if e:
+                c = c.model_copy(update=dict(label=e["label"], type=e.get("type"), situation=e.get("situation"),
+                                             undesired_outcome=e.get("undesired_outcome"), hard=False))
+            cases.append(c)
+        out.append(Scenario.model_validate({**s.model_dump(), "cases": [c.model_dump() for c in cases]}))
+    return out
+
+
+def load_scenarios(data_dir: str | Path = DEFAULT_DATA_DIR, errata: bool = False) -> list[Scenario]:
+    if errata:
+        base = load_scenarios(data_dir)
+        p = Path(data_dir) / "errata.yaml"
+        return apply_errata(base, p) if p.exists() else base
+    paths = sorted(p for p in Path(data_dir).glob("*.yaml") if p.name != "errata.yaml")
     if not paths:
         raise FileNotFoundError(f"no scenario files in {data_dir}")
     scenarios = [load_scenario(p) for p in paths]

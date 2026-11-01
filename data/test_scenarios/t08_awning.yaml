@@ -1,0 +1,164 @@
+id: t08_awning
+name: Third-floor flat
+split: test
+family: awning_wind_rain
+description: Balcony with a motorised awning, a weather station and an infrared terrace heater.
+rooms: [balcony, home]
+devices:
+  - id: awning
+    type: motorised_awning
+    room: balcony
+    description: Motorised fabric awning; the manufacturer requires it to be retracted above 40 km/h wind
+    states: {position: [extended, retracted]}
+  - id: heater_ir
+    type: infrared_heater
+    room: balcony
+    description: Wall-mounted infrared heater
+    states: {power: [on, off]}
+  - id: string_lights
+    type: lights
+    room: balcony
+    description: Balcony string lights
+    states: {power: [on, off]}
+  - id: balcony_door
+    type: door_opener
+    room: balcony
+    description: Motorised balcony door
+    states: {position: [open, closed]}
+environment:
+  - id: wind_speed
+    room: balcony
+    kind: numeric
+    description: Wind speed from the balcony weather station (km/h)
+  - id: lux_balcony
+    room: balcony
+    kind: numeric
+    description: Illuminance from the balcony weather station
+  - id: raining
+    room: balcony
+    kind: boolean
+    description: Rain sensor of the weather station
+  - id: temp_balcony
+    room: balcony
+    kind: numeric
+    description: Balcony temperature
+  - id: motion_balcony
+    room: balcony
+    kind: boolean
+    description: Balcony motion sensor
+effects:
+  - source: heater_ir.power
+    when: on
+    target: temp_balcony
+    effect: increase
+    kind: environmental
+    description: The infrared heater warms people and surfaces on the balcony
+rules:
+  - id: R1
+    text: When the balcony is brighter than 50000 lux, extend the awning.
+    trigger: {type: env, ref: lux_balcony, op: ">", value: 50000}
+    actions: [{ref: awning.position, value: extended}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: Brighten Dark Places
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/brighten-dark-places.src/brighten-dark-places.groovy
+      excerpt: the space is dark
+      adaptation: Inverted illuminance condition (bright instead of dark) and the actuator is an awning.
+  - id: R2
+    text: When the wind is stronger than 40 km/h, retract the awning.
+    trigger: {type: env, ref: wind_speed, op: ">", value: 40}
+    actions: [{ref: awning.position, value: retracted}]
+    source:
+      kind: original
+  - id: R3
+    text: When rain is detected, extend the awning to keep the balcony furniture dry.
+    trigger: {type: env, ref: raining, value: true}
+    actions: [{ref: awning.position, value: extended}]
+    source:
+      kind: original
+  - id: R4
+    text: When motion is detected on the balcony and it is colder than 12 C, turn on the infrared heater.
+    trigger: {type: env, ref: motion_balcony, value: true}
+    conditions: [{type: env, ref: temp_balcony, op: "<", value: 12}]
+    actions: [{ref: heater_ir.power, value: on}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: It's Too Cold
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/its-too-cold.src/its-too-cold.groovy
+      excerpt: turn on a heater or additional appliance
+      adaptation: Combined with a motion trigger so that the heater runs only when someone is outside.
+  - id: R5
+    text: At 21:00 turn on the balcony string lights.
+    trigger: {type: time, at: "21:00"}
+    actions: [{ref: string_lights.power, value: on}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: Once a Day
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/once-a-day.src/once-a-day.groovy
+      excerpt: Turn on one or more switches at a specified time and turn them off at a later time.
+      adaptation: The "on" time of the app.
+  - id: R6
+    text: At 23:30 turn off the balcony string lights.
+    trigger: {type: time, at: "23:30"}
+    actions: [{ref: string_lights.power, value: off}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: Once a Day
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/once-a-day.src/once-a-day.groovy
+      excerpt: Turn on one or more switches at a specified time and turn them off at a later time.
+      adaptation: The "off" time of the app.
+  - id: R7
+    text: When rain is detected, close the balcony door.
+    trigger: {type: env, ref: raining, value: true}
+    actions: [{ref: balcony_door.position, value: closed}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: When It's Going To Rain
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/when-its-going-to-rain.src/when-its-going-to-rain.groovy
+      excerpt: Are your windows shut?
+      adaptation: The app only notifies; here the rule closes the balcony door when rain starts.
+cases:
+  - id: t08_c1
+    rules: [R2, R3]
+    label: conflict
+    type: logical
+    justification: In a storm, strong wind makes R2 retract the awning while rain makes R3 extend it.
+    situation: "Rain together with wind above 40 km/h (a storm)."
+    undesired_outcome: "R3 extends the awning in storm wind after R2 retracted it; the awning can be torn off."
+    key_nodes: [awning]
+  - id: t08_c2
+    rules: [R1, R2]
+    label: conflict
+    type: logical
+    justification: On a sunny, windy day the sun makes R1 extend the awning while the wind makes R2 retract it.
+    situation: "Bright sun above 50000 lux with wind above 40 km/h."
+    undesired_outcome: "The awning is extended in strong wind whenever the sun comes out; risk of damage and repeated cycling."
+    key_nodes: [awning]
+  - id: t08_c3
+    rules: [R5, R6]
+    label: clean
+    justification: String lights on at 21:00 and off at 23:30 is a normal schedule.
+  - id: t08_c4
+    rules: [R3, R7]
+    label: clean
+    justification: Both rules react to rain to protect the balcony; they act on different devices and agree.
+    situation: "Near miss: two rules on the same trigger."
+    hard: true
+  - id: t08_c5
+    rules: [R1, R3]
+    label: clean
+    justification: Both rules extend the awning; they agree.
+    situation: "Near miss: two rules act on the same awning, with the same value."
+    hard: true
+  - id: t08_c6
+    rules: [R4, R1]
+    label: clean
+    justification: The heater rule and the awning rule do not share devices or variables in this home.
+home_conflicts: []
+home_clean_notes:
+  "R2+R7": "Different devices; no interaction."

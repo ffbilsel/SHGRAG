@@ -49,7 +49,7 @@ class LLMConfig:
 
 @dataclass
 class LLMResult:
-    verdict: Verdict | None
+    verdict: object | None  # an instance of the requested output schema (Verdict by default)
     error: str | None = None
     input_tokens: int = 0
     output_tokens: int = 0
@@ -73,32 +73,35 @@ class LLMClient:
             self._client = anthropic.Anthropic(max_retries=5)
         return self._client
 
-    def _key(self, prompt: str, run: int) -> str:
+    def _key(self, prompt: str, run: int, system: str = SYSTEM_PROMPT, schema: type = Verdict) -> str:
         c = self.config
-        blob = json.dumps(
-            {"backend": c.backend, "model": c.model, "effort": c.effort, "temperature": c.temperature, "system": SYSTEM_PROMPT, "prompt": prompt, "run": run},
-            sort_keys=True,
-        )
-        return hashlib.sha256(blob.encode()).hexdigest()
+        d = {"backend": c.backend, "model": c.model, "effort": c.effort, "temperature": c.temperature, "system": system, "prompt": prompt, "run": run}
+        if schema is not Verdict:  # keeps the cache keys of the original detection runs valid
+            d["schema"] = json.dumps(schema.model_json_schema(), sort_keys=True)
+        return hashlib.sha256(json.dumps(d, sort_keys=True).encode()).hexdigest()
 
     def _cache_path(self, key: str) -> Path:
         return Path(self.config.cache_dir) / f"{key}.json"
 
     def verdict(self, prompt: str, run: int = 0) -> LLMResult:
-        key = self._key(prompt, run)
+        return self.structured(prompt, run)
+
+    def structured(self, prompt: str, run: int = 0, system: str = SYSTEM_PROMPT, schema: type = Verdict) -> LLMResult:
+        """One structured call with the given system prompt and pydantic output schema."""
+        key = self._key(prompt, run, system, schema)
         # Identical prompts (e.g. a case with no AFFECTS edges in both graph
         # conditions) share one cache entry; serialise them so it is called once.
         with self._locks_guard:
             lock = self._locks.setdefault(key, threading.Lock())
         with lock:
-            return self._verdict(prompt, run, key)
+            return self._verdict(prompt, run, key, system, schema)
 
-    def _verdict(self, prompt: str, run: int, key: str) -> LLMResult:
+    def _verdict(self, prompt: str, run: int, key: str, system: str = SYSTEM_PROMPT, schema: type = Verdict) -> LLMResult:
         path = self._cache_path(key)
         if self.config.use_cache and path.exists():
             data = json.loads(path.read_text())
             return LLMResult(
-                verdict=Verdict.model_validate(data["verdict"]) if data.get("verdict") else None,
+                verdict=schema.model_validate(data["verdict"]) if data.get("verdict") else None,
                 error=data.get("error"),
                 input_tokens=data.get("input_tokens", 0),
                 output_tokens=data.get("output_tokens", 0),
@@ -106,7 +109,7 @@ class LLMClient:
                 cached=True,
             )
 
-        result = self._call(prompt)
+        result = self._call(prompt, system, schema)
         # Transient failures (network, rate limit) are not cached; refusals and
         # schema failures are, because they are deterministic outcomes of the run.
         if self.config.use_cache and not (result.error or "").startswith("api_error"):
@@ -118,19 +121,19 @@ class LLMClient:
             os.replace(tmp, path)  # atomic
         return result
 
-    def _call(self, prompt: str) -> LLMResult:
+    def _call(self, prompt: str, system: str = SYSTEM_PROMPT, schema: type = Verdict) -> LLMResult:
         if self.config.backend == "claude_code":
-            return self._call_claude_code(prompt)
+            return self._call_claude_code(prompt, system, schema)
         import anthropic
 
         c = self.config
         kwargs = dict(
             model=c.model,
             max_tokens=c.max_tokens,
-            system=SYSTEM_PROMPT,
+            system=system,
             messages=[{"role": "user", "content": prompt}],
             output_config={"effort": c.effort},
-            output_format=Verdict,
+            output_format=schema,
         )
         if c.temperature is not None:  # anthropic 1.x has no typed sampling params
             kwargs["extra_body"] = {"temperature": c.temperature}
@@ -151,11 +154,11 @@ class LLMClient:
             return LLMResult(None, error="unparsed_output", **usage)
         return LLMResult(resp.parsed_output, **usage)
 
-    def _call_claude_code(self, prompt: str) -> LLMResult:
+    def _call_claude_code(self, prompt: str, system: str = SYSTEM_PROMPT, schema: type = Verdict) -> LLMResult:
         c = self.config
         cmd = [
             "claude", "-p", "--output-format", "json", "--no-session-persistence",
-            "--system-prompt", SYSTEM_PROMPT, "--json-schema", json.dumps(Verdict.model_json_schema()),
+            "--system-prompt", system, "--json-schema", json.dumps(schema.model_json_schema()),
             "--model", c.model, "--effort", c.effort, "--tools", "",
         ]
         t0 = time.perf_counter()
@@ -178,4 +181,4 @@ class LLMClient:
             return LLMResult(None, error=f"api_error: claude_code: {data.get('subtype')}: {str(data.get('result'))[:200]}", **usage)
         if data.get("structured_output") is None:
             return LLMResult(None, error="unparsed_output", **usage)
-        return LLMResult(Verdict.model_validate(data["structured_output"]), **usage)
+        return LLMResult(schema.model_validate(data["structured_output"]), **usage)

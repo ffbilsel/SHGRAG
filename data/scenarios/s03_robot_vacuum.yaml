@@ -1,5 +1,7 @@
 id: s03_robot_vacuum
-name: Suburban house - robot vacuum and presence routines
+name: Suburban house
+split: dev
+family: robot_vacuum
 description: Robot vacuum cleaning the ground floor while presence routines control lock and alarm.
 rooms: [living_room, entrance, bedroom, home]
 devices:
@@ -69,14 +71,20 @@ cases:
     label: conflict
     type: semantic
     justification: The vacuum triggers the living room motion sensor, so R2 unlocks the door while nobody is home.
+    situation: "The robot vacuum starts at 10:00 on a weekday while the occupants are out."
+    undesired_outcome: "The vacuum's movement triggers the living-room motion sensor and R2 unlocks the entrance door of an empty home."
     key_nodes: [vacuum, motion_living]
   - id: s03_c2
     rules: [R1, R3]
     label: conflict
     type: semantic
     justification: When the vacuum runs during away mode its motion sets off the alarm (false alarm).
+    situation: "The vacuum runs at 10:00 while the home is in away mode."
+    undesired_outcome: "The vacuum triggers the living-room motion sensor and R3 sounds the alarm (false alarm)."
     key_nodes: [vacuum, motion_living]
   - id: s03_c3
     rules: [R1, R4]
     label: clean
     justification: The vacuum cleans the living room; the bedroom motion sensor is not affected.
+    situation: "Near miss: The vacuum does create motion, but in a different room than R4's sensor."
+    hard: true

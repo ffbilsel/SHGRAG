@@ -1,5 +1,7 @@
 id: s09_humidity_bathroom
-name: Flat with nursery - humidifier and dehumidifier
+name: Ground-floor flat
+split: dev
+family: humidity_bathroom
 description: Humidity control in nursery and bathroom.
 rooms: [nursery, bathroom]
 devices:
@@ -78,11 +80,15 @@ cases:
     label: conflict
     type: semantic
     justification: The humidifier raises nursery humidity above 55 %, so R2 starts the dehumidifier - both devices run against each other all night.
+    situation: "From 20:00, once the humidifier has raised nursery humidity above 55 %."
+    undesired_outcome: "R2 starts the dehumidifier against the running humidifier; both run all night against each other."
     key_nodes: [humidifier_nursery, humidity_nursery]
   - id: s09_c2
     rules: [R3, R4]
     label: clean
     justification: Fan on above 70 % and off below 50 % is a normal hysteresis band.
+    situation: "Near miss: Opposite fan actions under non-overlapping humidity thresholds."
+    hard: true
   - id: s09_c3
     rules: [R1, R3]
     label: clean
@@ -92,4 +98,6 @@ cases:
     label: conflict
     type: logical
     justification: If humidity is above 55 % at 20:00, R2 turns the dehumidifier on while R5 turns it off.
+    situation: "At 20:00 while nursery humidity is above 55 %."
+    undesired_outcome: "R2 turns the dehumidifier on and R5 turns it off at the same time."
     key_nodes: [dehumidifier_nursery]

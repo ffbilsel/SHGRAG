@@ -1,0 +1,282 @@
+[
+  {
+    "scenario_id": "t02_media_room",
+    "rules": [
+      "R3",
+      "R4"
+    ],
+    "votes": 5,
+    "conditions": [
+      "graph_noaffects",
+      "symbolic",
+      "text"
+    ],
+    "example": {
+      "rules": [
+        "R3",
+        "R4"
+      ],
+      "conflict_type": "logical",
+      "situation": "After 19:00, when motion in the living room stops or nobody is present.",
+      "undesired_outcome": "The evening lamp set by the schedule is turned off by the no-motion rule, so the planned evening lighting gets cut off unexpectedly.",
+      "explanation": "R3 sets lamp_living to on unconditionally and R4 sets it to off, and both can apply in the same evening."
+    },
+    "already_reviewed_clean": "clean case t02_c3: Lamp on at 19:00 and off when the room empties is ordinary occupancy lighting; the triggers do not coincide."
+  },
+  {
+    "scenario_id": "t02_media_room",
+    "rules": [
+      "R3",
+      "R6"
+    ],
+    "votes": 1,
+    "conditions": [
+      "symbolic"
+    ],
+    "example": {
+      "rules": [
+        "R3",
+        "R6"
+      ],
+      "conflict_type": "semantic",
+      "situation": "",
+      "undesired_outcome": "",
+      "explanation": "R3's action lamp_living.power=on changes lux_living, a condition of R6"
+    },
+    "already_reviewed_clean": "R3's lamp raises the light level, which only matters to R6's darkness condition; R6 would switch on a lamp that is already on."
+  },
+  {
+    "scenario_id": "t02_media_room",
+    "rules": [
+      "R4",
+      "R5"
+    ],
+    "votes": 1,
+    "conditions": [
+      "text"
+    ],
+    "example": {
+      "rules": [
+        "R5",
+        "R4"
+      ],
+      "conflict_type": "semantic",
+      "situation": "Fan running while lamp is on and occupants leave",
+      "undesired_outcome": "Lamp never turns off, wasting energy",
+      "explanation": "Fan movement keeps motion_living True, so the 'motion stops' trigger of R4 never fires."
+    },
+    "already_reviewed_clean": null
+  },
+  {
+    "scenario_id": "t02_media_room",
+    "rules": [
+      "R5",
+      "R6"
+    ],
+    "votes": 2,
+    "conditions": [
+      "text"
+    ],
+    "example": {
+      "rules": [
+        "R5",
+        "R6"
+      ],
+      "conflict_type": "semantic",
+      "situation": "The living room is above 27 \u00b0C, so R5 turns on the ceiling fan, and the room is darker than 30 lux.",
+      "undesired_outcome": "The moving fan blades and air currents can trigger the PIR motion sensor. The floor lamp then turns on even though nobody is there, and the false motion keeps R4 from switching it off.",
+      "explanation": "The fan R5 turns on changes the motion reading that R6 relies on, so the lamp reacts to motion that isn't caused by a person."
+    },
+    "already_reviewed_clean": null
+  },
+  {
+    "scenario_id": "t03_steam_shower",
+    "rules": [
+      "R1",
+      "R5"
+    ],
+    "votes": 4,
+    "conditions": [
+      "graph",
+      "symbolic",
+      "text"
+    ],
+    "example": {
+      "rules": [
+        "R1",
+        "R5"
+      ],
+      "conflict_type": "semantic",
+      "situation": "During the 06:30-07:00 steam session, bathroom humidity rises above 75 %.",
+      "undesired_outcome": "Extractor fan turns on and removes the steam the shower is producing, defeating the steam session and wasting energy.",
+      "explanation": "R1 increases humidity_bath, which triggers R5; R5's fan then decreases humidity, counteracting R1's intended effect."
+    },
+    "already_reviewed_clean": "clean case t03_c2: The steam raises bathroom humidity and R5 starts the extractor fan; this is the intended reaction."
+  },
+  {
+    "scenario_id": "t05_mode_chain",
+    "rules": [
+      "R1",
+      "R5"
+    ],
+    "votes": 3,
+    "conditions": [
+      "graph",
+      "graph_noaffects",
+      "symbolic"
+    ],
+    "example": {
+      "rules": [
+        "R1",
+        "R5"
+      ],
+      "conflict_type": "logical",
+      "situation": "The household is away (mode away from R1) and motion is detected in the living room between 06:00 and 10:00, for example from a pet, an intruder or a cleaner.",
+      "undesired_outcome": "The mode switches to home while nobody is there. Away-mode protections no longer apply (camera recording is no longer tied to the mode) and the away heating setback is lost.",
+      "explanation": "R5 sets hub.mode to home based on motion alone, without checking everyone_away. This overrides the away mode that R1 set."
+    },
+    "already_reviewed_clean": "R5 would overwrite away only if motion were detected in an empty home between 06:00 and 10:00; no pet or device in this home produces that motion."
+  },
+  {
+    "scenario_id": "t05_mode_chain",
+    "rules": [
+      "R3",
+      "R4"
+    ],
+    "votes": 1,
+    "conditions": [
+      "text"
+    ],
+    "example": {
+      "rules": [
+        "R3",
+        "R4"
+      ],
+      "conflict_type": "logical",
+      "situation": "Departure between 22:00 and 02:00: the mode goes to away and then to night.",
+      "undesired_outcome": "The thermostat setpoint ends at 19 C instead of the away setting of 16 C, heating an empty flat and wasting energy.",
+      "explanation": "R3 sets the thermostat to 16 and R4 sets it to 19. The away-then-night sequence fires both rules, and the later night setting overrides the away setting."
+    },
+    "already_reviewed_clean": "clean case t05_c3: Different setpoints for different modes; the triggers are mutually exclusive."
+  },
+  {
+    "scenario_id": "t05_mode_chain",
+    "rules": [
+      "R6",
+      "R7"
+    ],
+    "votes": 3,
+    "conditions": [
+      "graph",
+      "graph_noaffects",
+      "text"
+    ],
+    "example": {
+      "rules": [
+        "R6",
+        "R7"
+      ],
+      "conflict_type": "logical",
+      "situation": "Late-evening departure (22:00-02:00): the mode goes to away, then R2 switches it to night.",
+      "undesired_outcome": "The living-room camera stops recording while the home is empty, defeating the security purpose of R6.",
+      "explanation": "R6 turns camera recording on in away mode and R7 turns it off in night mode. The away-to-night switch caused by R1 and R2 makes both fire in sequence, so the camera ends up off."
+    },
+    "already_reviewed_clean": "clean case t05_c5: Camera on in away and off in night are triggered by mutually exclusive modes."
+  },
+  {
+    "scenario_id": "t06_bedroom_ventilation",
+    "rules": [
+      "R3",
+      "R4"
+    ],
+    "votes": 13,
+    "conditions": [
+      "graph",
+      "graph_noaffects",
+      "symbolic",
+      "text",
+      "text_deps"
+    ],
+    "example": {
+      "rules": [
+        "R3",
+        "R4"
+      ],
+      "conflict_type": "logical",
+      "situation": "At 07:30 while bedroom CO2 is still above 1000 ppm, or CO2 goes above 1000 ppm again soon after R3 closes the window.",
+      "undesired_outcome": "R3 closes the window and R4 opens it again, so the window cycles and the 07:30 close schedule is not kept.",
+      "explanation": "R3 sets the window to closed at a fixed time while R4 asks for open under the CO2 condition. Both can apply to the same window at the same moment."
+    },
+    "already_reviewed_clean": "Different times; R4 reacts to CO2 and R3 is a fixed schedule. Closing at 07:30 can let CO2 rise again, which R4 then handles."
+  },
+  {
+    "scenario_id": "t07_driveway",
+    "rules": [
+      "R1",
+      "R3"
+    ],
+    "votes": 5,
+    "conditions": [
+      "graph",
+      "symbolic",
+      "text_deps"
+    ],
+    "example": {
+      "rules": [
+        "R1",
+        "R3"
+      ],
+      "conflict_type": "semantic",
+      "situation": "Home in night or away mode; the floodlight is on after driveway motion.",
+      "undesired_outcome": "Heat from the floodlight keeps triggering the motion sensor, so the camera records continuously or keeps restarting. This wastes storage and hides real events among false alarms.",
+      "explanation": "R1 turns the floodlight on, its heat sets motion_drive true, and that repeatedly fires R3's recording trigger without a real intruder."
+    },
+    "already_reviewed_clean": "The floodlight keeps the PIR reporting motion, but R3 has already started recording and nothing in this home stops it; no additional effect in the model."
+  },
+  {
+    "scenario_id": "t07_driveway",
+    "rules": [
+      "R3",
+      "R5"
+    ],
+    "votes": 3,
+    "conditions": [
+      "graph_noaffects"
+    ],
+    "example": {
+      "rules": [
+        "R5",
+        "R3"
+      ],
+      "conflict_type": "physical",
+      "situation": "At night or in away mode after 23:00, once R5 has switched off the outdoor lighting circuit, someone enters the driveway.",
+      "undesired_outcome": "The driveway PIR sensor is mounted in the floodlight housing, so it likely loses power with the floodlight. It then can't report motion, and the camera never starts recording when it matters most.",
+      "explanation": "The PIR sensor probably depends on the floodlight's power supply, which runs through relay_outdoor. When R5 cuts the relay, the motion_drive trigger R3 relies on is disabled."
+    },
+    "already_reviewed_clean": "The camera is powered over Ethernet, not by the outdoor circuit."
+  },
+  {
+    "scenario_id": "t07_driveway",
+    "rules": [
+      "R4",
+      "R5"
+    ],
+    "votes": 9,
+    "conditions": [
+      "graph",
+      "graph_noaffects",
+      "text_deps"
+    ],
+    "example": {
+      "rules": [
+        "R4",
+        "R5"
+      ],
+      "conflict_type": "physical",
+      "situation": "R5 switches the outdoor circuit off at 23:00 and no rule ever turns it back on; at 19:00 the next day R4 turns the garden lights on.",
+      "undesired_outcome": "The garden lights stay dark every evening after the first night even though R4 sets them on.",
+      "explanation": "The garden lights get their power from the outdoor relay, which stays off permanently after R5 runs, so R4's action has no effect."
+    },
+    "already_reviewed_clean": "clean case t07_c4: The circuit switching off at 23:00 also turns the garden lights off, which is the intended end of the evening lighting."
+  }
+]

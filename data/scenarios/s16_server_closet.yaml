@@ -1,5 +1,7 @@
 id: s16_server_closet
-name: Home lab - server closet cooling
+name: Corner apartment
+split: dev
+family: server_closet
 description: A NAS and a cooling fan share a power strip in a small closet.
 rooms: [closet, office, home]
 devices:
@@ -83,18 +85,26 @@ cases:
     label: conflict
     type: physical
     justification: The closet strip powers the NAS; cutting it in night mode kills the 01:00 backup.
+    situation: "Night mode is active at 01:00."
+    undesired_outcome: "The closet strip is off, so the NAS has no power and the nightly backup does not run."
     key_nodes: [strip_closet, nas]
   - id: s16_c2
     rules: [R2, R3]
     label: conflict
     type: physical
     justification: The cooling fan is on the same strip, so overheating protection cannot work at night.
+    situation: "Night mode is active and the closet becomes warmer than 35 C (e.g. during a backup)."
+    undesired_outcome: "The cooling fan is on the strip that R2 switched off, so R3 cannot cool the closet; equipment may overheat."
     key_nodes: [strip_closet, fan_closet]
   - id: s16_c3
     rules: [R1, R3]
     label: clean
     justification: The backup heats the closet and the fan responds as intended - a designed feedback loop.
+    situation: "Near miss: The backup heats the closet and triggers the fan; a designed feedback loop."
+    hard: true
   - id: s16_c4
     rules: [R4, R1]
     label: clean
     justification: The printer plug is unrelated to the NAS.
+    situation: "Near miss: A plug goes off at night mode, but it powers the printer, not the NAS."
+    hard: true

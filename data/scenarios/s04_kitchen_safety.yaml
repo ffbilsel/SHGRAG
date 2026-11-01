@@ -1,5 +1,7 @@
 id: s04_kitchen_safety
-name: Apartment kitchen - cooking and smoke safety
+name: Downtown apartment
+split: dev
+family: kitchen_safety
 description: Oven, range hood, smoke detector and a door lock that reacts to smoke.
 rooms: [kitchen, entrance, home]
 devices:
@@ -64,14 +66,25 @@ cases:
     label: conflict
     type: logical
     justification: If smoke appears while the home is switched to away, R1 unlocks for evacuation while R2 locks the door.
+    situation: "Smoke is detected in the kitchen while (or just after) the home switches to away mode."
+    undesired_outcome: "R1 unlocks the door for evacuation and R2 locks it; the evacuation route may end up locked."
     key_nodes: [lock_door]
   - id: s04_c2
     rules: [R1, R4]
     label: conflict
     type: logical
     justification: During a smoke event at 08:00 R4 re-enables the air handler that R1 shut down, spreading smoke.
+    situation: "A smoke event is in progress at 08:00."
+    undesired_outcome: "R4 turns the air handler back on after R1 shut it down, spreading smoke through the flat."
     key_nodes: [hvac]
   - id: s04_c3
     rules: [R3, R2]
     label: clean
     justification: Range hood control is unrelated to locking the door when leaving.
+home_conflicts:
+  - rules: [R1, R3]
+    type: semantic
+    justification: The range hood that R3 starts whenever the oven is on clears the kitchen smoke reading, so R1's evacuation response can be delayed or never fire during a real fire.
+    situation: "Smoke develops while the oven (and therefore the hood) is on."
+    undesired_outcome: "The smoke sensor reads clear; the door is not unlocked for evacuation and the air handler keeps running."
+    added_by: adjudication

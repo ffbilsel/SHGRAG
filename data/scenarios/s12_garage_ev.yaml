@@ -1,5 +1,7 @@
 id: s12_garage_ev
-name: House with garage - EV charging and garage door
+name: Semi-detached house
+split: dev
+family: garage_ev
 description: EV charger, garage door, and a garage ventilation fan on a shared circuit.
 rooms: [garage, home]
 devices:
@@ -84,20 +86,29 @@ cases:
     label: conflict
     type: physical
     justification: With the garage circuit off while away, the CO response cannot start the exhaust fan (safety function lost).
+    situation: "Home is in away mode (garage breaker off) and carbon monoxide is detected in the garage."
+    undesired_outcome: "R2 cannot start the exhaust fan because its circuit is off; the CO safety response is lost."
     key_nodes: [breaker_garage, fan_garage]
   - id: s12_c2
     rules: [R2, R3]
     label: conflict
     type: logical
     justification: A CO event while switching to away mode makes R2 open and R3 close the garage door.
+    situation: "CO is detected in the garage while the home switches to away mode."
+    undesired_outcome: "R2 opens the garage door to vent CO and R3 closes it."
     key_nodes: [garage_door]
   - id: s12_c3
     rules: [R1, R4]
     label: conflict
     type: physical
     justification: The car parked before leaving cannot charge because the breaker cuts the charger circuit when away.
+    situation: "The car is parked in the garage and the home is then (or already) in away mode."
+    undesired_outcome: "The breaker cuts the charger circuit, so R4's charging stops and the car is not charged."
     key_nodes: [breaker_garage, ev_charger]
   - id: s12_c4
     rules: [R4, R5]
     label: clean
     justification: Charging and turning on the light when the car arrives are independent.
+home_clean_notes:
+  "R1+R3": "The garage door is not on the garage circuit in this home; the breaker does not stop the door."
+  "R1+R5": "The garage light is not on the garage circuit in this home."

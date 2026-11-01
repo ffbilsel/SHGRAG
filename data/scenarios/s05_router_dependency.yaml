@@ -1,5 +1,7 @@
 id: s05_router_dependency
-name: Home office - network dependency chain
+name: Two-bedroom flat
+split: dev
+family: router_dependency
 description: The Wi-Fi router sits on a smart plug; cloud cameras and the doorbell depend on the network.
 rooms: [office, entrance, garden, home]
 devices:
@@ -84,18 +86,26 @@ cases:
     label: conflict
     type: physical
     justification: Turning off the office plug kills the router, so the garden camera cannot upload during the night (two-hop dependency).
+    situation: "Home is in night mode after 00:30, when R1 has turned the office plug off."
+    undesired_outcome: "The router loses power, so the garden camera cannot upload recordings to the cloud overnight."
     key_nodes: [plug_office, router, camera_garden]
   - id: s05_c2
     rules: [R1, R3]
     label: conflict
     type: physical
     justification: Without the router, doorbell notifications cannot be delivered while away.
+    situation: "Home is in away mode after 00:30."
+    undesired_outcome: "The router is off, so doorbell notifications that R3 enabled are never delivered while nobody is home."
     key_nodes: [router, doorbell]
   - id: s05_c3
     rules: [R4, R2]
     label: clean
     justification: The desk lamp plug powers only the lamp; the network stays up.
+    situation: "Near miss: R4 also cuts a plug at 00:30, but it only powers the desk lamp."
+    hard: true
   - id: s05_c4
     rules: [R4, R3]
     label: clean
     justification: The desk lamp plug is unrelated to the doorbell.
+    situation: "Near miss: R4 also cuts a plug at 00:30, but it is not on the doorbell's network path."
+    hard: true

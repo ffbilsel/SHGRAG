@@ -1,5 +1,7 @@
 id: s13_pet_feeder
-name: Apartment with cat - pet devices and security
+name: Loft apartment
+split: dev
+family: pet_feeder
 description: Automatic pet feeder and litter box interact with motion-based security while the owner is away.
 rooms: [kitchen, living_room, bathroom, home]
 devices:
@@ -79,6 +81,8 @@ cases:
     label: conflict
     type: semantic
     justification: Feeding attracts the cat into the kitchen; its motion sets off the away-mode alarm every noon.
+    situation: "At 12:00 while the home is in away mode."
+    undesired_outcome: "The feeder attracts the cat into the kitchen, its motion triggers R2 and the siren sounds (false alarm every noon)."
     key_nodes: [feeder, motion_kitchen]
   - id: s13_c2
     rules: [R1, R3]
@@ -88,9 +92,15 @@ cases:
     rules: [R4, R5]
     label: clean
     justification: The litter box is in the bathroom; it does not affect the living room motion sensor.
+    situation: "Near miss: The litter box cycles at noon, but it is not near a motion sensor used by R5."
+    hard: true
   - id: s13_c4
     rules: [R3, R6]
     label: conflict
     type: logical
     justification: Kitchen motion while at home makes R3 start and R6 stop camera recording at the same time.
+    situation: "Kitchen motion while the home is in home mode."
+    undesired_outcome: "R3 starts and R6 stops camera recording on the same motion event; the privacy intent of R6 is defeated or recording flickers."
     key_nodes: [camera_kitchen]
+home_clean_notes:
+  "R1+R6": "The cat's motion makes R6 stop recording while someone is at home; that is the privacy intent of R6, not a conflict."

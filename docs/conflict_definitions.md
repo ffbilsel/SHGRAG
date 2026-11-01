@@ -21,10 +21,26 @@ When several types apply, the case is labelled with the most safety-relevant mec
 ## Fields
 
 - `justification`: one or two sentences that a reviewer can check against the scenario.
-- `key_nodes`: the devices or variables that a correct explanation must mention. These drive the automatic grounding proxy.
+- `situation` (required for conflicts): the concrete situation in which the conflict shows up, such as times, modes and sensor values. For a clean near-miss case it names what makes the case look like a conflict.
+- `undesired_outcome` (required for conflicts): what goes wrong in that situation. A label is therefore more than a dependency path. It says *when* the path matters and *what* the harm is.
+- `key_nodes`: the devices or variables that a correct explanation must mention. These drive the automatic grounding proxy, which is a weak signal only (see `annotation_guidelines.md`).
+- `hard: true`: a clean case built to look like a conflict. Examples: opposite actions under non-overlapping thresholds, or a plug that powers something unrelated.
 
-## Expert check (0/1)
+## Whole-home ground truth
 
-For each LLM output flagged as a conflict (`annotations.csv`):
-- `explanation_supported = 1` if the explanation is consistent with the scenario facts and names the actual mechanism;
-- `repair_safe = 1` if the suggested repair resolves the conflict without disabling a safety function or creating a new hazard.
+The evaluation cases are chosen rule sets, usually pairs: the "candidate rule set" of the main experiment. The whole-home scan instead asks for every conflicting rule set in a home, so each home also lists:
+
+- `home_conflicts`: conflicts that are not evaluation cases, with the same fields as a conflict case. Entries added after the pooled review of scan outputs carry `added_by: adjudication`, and the report gives scan scores before and after adjudication.
+- `home_clean_notes`: rule pairs reviewed and judged clean, with the reason. Labelled clean cases count as reviewed automatically.
+
+The scan's ground truth uses the minimal conflicting sets: a triple whose hazard is already one of its pairs is dropped.
+
+## Provenance and splits
+
+- `split: dev | test`: the 20 `dev` homes were used while building the prompts and the retriever. The 8 `test` homes (`data/test_scenarios/`) were written afterwards and frozen in `MANIFEST.json` (content hash + prompt fingerprint) before any LLM saw them.
+- `family`: the scenario family. Dev and test families must not overlap, so small variants of one scenario never sit on both sides of the split. `python -m shgrag leakage` also reports content similarity.
+- `source` on a rule: `original` (written by the author), or `adapted` with `platform`, `app`, `url`, a verbatim `excerpt` and the `adaptation` made. `python -m shgrag --data data/test_scenarios check-sources` fetches each URL and checks the excerpt; the last check is saved in `data/test_scenarios/sources_check.json`. Dev rules without a `source` are original.
+
+## Expert check
+
+The old 0/1 sheet (`annotations.csv`) is replaced by a criterion-level rubric: direction, intermediate steps, timing/condition consistency, unsupported assumptions and outcome for explanations; applicability, resolution, function preservation and safety for repairs. Its sample also contains false positives, false negatives and hard clean cases. See [`annotation_guidelines.md`](annotation_guidelines.md).

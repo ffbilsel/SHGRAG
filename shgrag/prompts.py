@@ -75,6 +75,55 @@ def text_only_prompt(scenario: Scenario, rule_ids: list[str]) -> str:
     )
 
 
+def _fmt_val(v: object) -> str:
+    return str(v).lower() if isinstance(v, bool) else str(v)
+
+
+def home_facts_text(scenario: Scenario) -> str:
+    """Every device, environment variable and dependency of the home as plain
+    sentences: the same facts the graph holds, but with no retrieval (nothing
+    is filtered to the rules under analysis), no causal chains and no graph
+    notation. Used by the `text_deps` condition."""
+    lines = ["# Devices"]
+    for d in scenario.devices:
+        states = "; ".join(
+            f"{a} ({', '.join(_fmt_val(x) for x in vals)})" if vals else a for a, vals in d.states.items()
+        )
+        desc = f" - {d.description}" if d.description else ""
+        lines.append(f"- {d.id}: {d.type} in the {d.room}{desc}. States: {states}.")
+    lines.append("")
+    lines.append("# Environment and context variables")
+    if not scenario.environment:
+        lines.append("- none")
+    for e in scenario.environment:
+        vals = f" Values: {', '.join(_fmt_val(x) for x in e.values)}." if e.values else ""
+        desc = f" - {e.description}" if e.description else ""
+        lines.append(f"- {e.id}: {e.kind} variable in the {e.room}{desc}.{vals}")
+    lines.append("")
+    lines.append("# Known dependencies and effects in this home")
+    if not scenario.effects:
+        lines.append("- none")
+    for ef in scenario.effects:
+        if ef.effect == "set":
+            change = f"{ef.target} becomes {_fmt_val(ef.value)}"
+        else:
+            change = f"{ef.target} {ef.effect}s"
+        desc = f" ({ef.description})" if ef.description else ""
+        lines.append(f"- When {ef.source} is {_fmt_val(ef.when)}, {change}. [{ef.kind}]{desc}")
+    return "\n".join(lines)
+
+
+def text_deps_prompt(scenario: Scenario, rule_ids: list[str]) -> str:
+    """Text baseline plus the home's devices, variables and dependencies as flat text."""
+    rules = "\n".join(_fmt_rule(scenario.rule(rid)) for rid in rule_ids)
+    return (
+        f"Home: {scenario.name}\n\n"
+        f"# Automation rules\n{rules}\n\n"
+        f"{home_facts_text(scenario)}\n\n"
+        f"Analyse rules {', '.join(rule_ids)} for conflicts."
+    )
+
+
 def graph_prompt(scenario: Scenario, rule_ids: list[str], graph_context: str) -> str:
     return (
         f"Home: {scenario.name}\n\n"

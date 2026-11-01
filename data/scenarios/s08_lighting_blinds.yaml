@@ -1,5 +1,7 @@
 id: s08_lighting_blinds
-name: Townhouse - daylight, blinds and lights
+name: Townhouse
+split: dev
+family: lighting_blinds
 description: Daylight-driven blinds and lights in the living room and study.
 rooms: [living_room, study]
 devices:
@@ -78,11 +80,15 @@ cases:
     label: conflict
     type: semantic
     justification: Closing the blinds in bright daylight drops the light level and makes R2 switch the lights on during the day (wasted energy, oscillation).
+    situation: "Bright daylight above 800 lux in the living room."
+    undesired_outcome: "R1 closes the blinds, the room drops below 150 lux and R2 switches the ceiling lights on during the day; possible open/close oscillation."
     key_nodes: [blinds_living, lux_living]
   - id: s08_c2
     rules: [R3, R4]
     label: clean
     justification: Opening at 07:30 and closing at 22:00 is a normal non-overlapping schedule.
+    situation: "Near miss: Opposite actions on the blinds, but at non-overlapping times."
+    hard: true
   - id: s08_c3
     rules: [R1, R5]
     label: clean
@@ -92,4 +98,8 @@ cases:
     label: conflict
     type: logical
     justification: On a bright morning R3 opens the blinds at 07:30 while R1 closes them because the room is already above 800 lux - the blinds fight each other.
+    situation: "At 07:30 on a morning when the living room is already brighter than 800 lux."
+    undesired_outcome: "R3 opens the blinds and R1 closes them again; the blinds fight each other."
     key_nodes: [blinds_living]
+home_clean_notes:
+  "R2+R4": "Closing the blinds at 22:00 lowers the light level, but it is already dark; switching the lights on at night is intended."

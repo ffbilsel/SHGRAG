@@ -1,0 +1,162 @@
+id: t07_driveway
+name: End-of-terrace house
+split: test
+family: floodlight_pir_and_outdoor_relay
+description: Driveway floodlight with a PIR sensor mounted right next to it; garden lighting and the floodlight share an outdoor circuit relay.
+rooms: [driveway, garden, home]
+devices:
+  - id: floodlight
+    type: floodlight
+    room: driveway
+    description: Halogen floodlight; the driveway PIR sensor is mounted under its housing
+    states: {power: [on, off]}
+  - id: relay_outdoor
+    type: circuit_relay
+    room: garden
+    description: Smart relay on the outdoor lighting circuit (garden lights and the driveway floodlight)
+    states: {power: [on, off]}
+  - id: garden_lights
+    type: lights
+    room: garden
+    description: Low-voltage garden lights with their own smart switch
+    states: {power: [on, off]}
+  - id: camera_drive
+    type: camera
+    room: driveway
+    description: Driveway camera, powered over Ethernet from the house
+    states: {recording: [on, off]}
+environment:
+  - id: motion_drive
+    room: driveway
+    kind: boolean
+    description: PIR motion sensor on the driveway
+  - id: home_mode
+    room: home
+    kind: categorical
+    values: [home, away, night]
+    description: Household mode
+effects:
+  - source: floodlight.power
+    when: on
+    target: motion_drive
+    effect: set
+    value: true
+    kind: environmental
+    description: The hot halogen housing right above the PIR keeps the sensor reporting motion
+  - source: relay_outdoor.power
+    when: off
+    target: floodlight.power
+    effect: set
+    value: off
+    kind: physical
+    description: The floodlight is wired to the outdoor lighting circuit
+  - source: relay_outdoor.power
+    when: off
+    target: garden_lights.power
+    effect: set
+    value: off
+    kind: physical
+    description: The garden lights are wired to the outdoor lighting circuit
+rules:
+  - id: R1
+    text: When motion is detected on the driveway, turn on the floodlight.
+    trigger: {type: env, ref: motion_drive, value: true}
+    actions: [{ref: floodlight.power, value: on}]
+    source:
+      kind: adapted
+      platform: Home Assistant
+      app: Motion-activated Light (core blueprint)
+      url: https://github.com/home-assistant/core/blob/dev/homeassistant/components/automation/blueprints/motion_light.yaml
+      excerpt: Turn on a light when motion is detected.
+      adaptation: The "turn on" half of the blueprint; the light is the driveway floodlight.
+  - id: R2
+    text: When motion on the driveway stops, turn off the floodlight.
+    trigger: {type: env, ref: motion_drive, value: false}
+    actions: [{ref: floodlight.power, value: off}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: Light Follows Me
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/light-follows-me.src/light-follows-me.groovy
+      excerpt: off again once the motion stops
+      adaptation: The delay is dropped.
+  - id: R3
+    text: When motion is detected on the driveway while the home is in night or away mode, start recording on the driveway camera.
+    trigger: {type: env, ref: motion_drive, value: true}
+    conditions: [{type: env, ref: home_mode, op: "!=", value: home}]
+    actions: [{ref: camera_drive.recording, value: on}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: Smart Security
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/smart-security.src/smart-security.groovy
+      excerpt: Alerts you when there are intruders
+      adaptation: The alert is replaced by camera recording; armed in night and away modes.
+  - id: R4
+    text: At 19:00 turn on the garden lights.
+    trigger: {type: time, at: "19:00"}
+    actions: [{ref: garden_lights.power, value: on}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: Sunrise/Sunset
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/sunrise-sunset.src/sunrise-sunset.groovy
+      excerpt: controls lights based on local sunrise and sunset times
+      adaptation: Sunset is fixed at 19:00 for the benchmark.
+  - id: R5
+    text: At 23:00 switch off the outdoor lighting circuit to save energy.
+    trigger: {type: time, at: "23:00"}
+    actions: [{ref: relay_outdoor.power, value: off}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: Once a Day
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/once-a-day.src/once-a-day.groovy
+      excerpt: Turn on one or more switches at a specified time and turn them off at a later time.
+      adaptation: The "off" time of the app; the switch is the outdoor circuit relay.
+  - id: R6
+    text: At 06:30 turn off the garden lights.
+    trigger: {type: time, at: "06:30"}
+    actions: [{ref: garden_lights.power, value: off}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: Sunrise/Sunset
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/sunrise-sunset.src/sunrise-sunset.groovy
+      excerpt: controls lights based on local sunrise and sunset times
+      adaptation: Sunrise is fixed at 06:30 for the benchmark.
+cases:
+  - id: t07_c1
+    rules: [R1, R2]
+    label: conflict
+    type: semantic
+    justification: Once R1 switches the floodlight on, its hot housing keeps the PIR reporting motion, so the motion never stops and R2 never switches the light off.
+    situation: "Any motion on the driveway at night."
+    undesired_outcome: "The floodlight stays on all night; R2's switch-off is never reached."
+    key_nodes: [floodlight, motion_drive]
+  - id: t07_c2
+    rules: [R5, R1]
+    label: conflict
+    type: physical
+    justification: The floodlight is on the outdoor circuit that R5 switches off at 23:00, so R1 cannot light the driveway at night.
+    situation: "Someone approaches the driveway after 23:00."
+    undesired_outcome: "The security floodlight stays dark although R1 tries to switch it on."
+    key_nodes: [relay_outdoor, floodlight]
+  - id: t07_c3
+    rules: [R4, R6]
+    label: clean
+    justification: Garden lights on at 19:00 and off at 06:30 is a normal schedule.
+    situation: "Near miss: opposite actions on the same lights, at different times."
+    hard: true
+  - id: t07_c4
+    rules: [R4, R5]
+    label: clean
+    justification: The circuit switching off at 23:00 also turns the garden lights off, which is the intended end of the evening lighting.
+    situation: "Near miss: R5 cuts the power of the device R4 controls, but as intended."
+    hard: true
+home_conflicts: []
+home_clean_notes:
+  "R2+R5": "Both switch the floodlight off; consistent."
+  "R5+R6": "Both switch the garden lights off; consistent."
+  "R1+R3": "The floodlight keeps the PIR reporting motion, but R3 has already started recording and nothing in this home stops it; no additional effect in the model."
+  "R3+R5": "The camera is powered over Ethernet, not by the outdoor circuit."

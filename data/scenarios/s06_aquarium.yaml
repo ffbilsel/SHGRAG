@@ -1,5 +1,7 @@
 id: s06_aquarium
-name: Studio flat - aquarium and night energy saving
+name: Studio flat
+split: dev
+family: aquarium
 description: An aquarium pump and heater share a power strip that energy-saving routines switch off.
 rooms: [living_room, home]
 devices:
@@ -93,18 +95,26 @@ cases:
     label: conflict
     type: physical
     justification: The power strip feeds the aquarium heater; cutting it at night defeats R2's temperature protection.
+    situation: "Home switches to night mode while the aquarium water is (or becomes) colder than 24 C."
+    undesired_outcome: "The power strip cuts the aquarium heater (and pump), so R2 cannot keep the water warm; fish are exposed to cold water overnight."
     key_nodes: [strip_living, aquarium_heater]
   - id: s06_c2
     rules: [R3, R2]
     label: clean
     justification: The TV plug only powers the TV, not the aquarium equipment.
+    situation: "Near miss: Another plug goes off at night mode, but it powers only the TV."
+    hard: true
   - id: s06_c3
     rules: [R2, R4]
     label: clean
     justification: Thermostat-style hysteresis with non-overlapping thresholds (below 24 on, above 28 off) is intended.
+    situation: "Near miss: Opposite actions on the heater, but under non-overlapping thresholds (hysteresis)."
+    hard: true
   - id: s06_c4
     rules: [R5, R2]
     label: conflict
     type: logical
     justification: At night R5 switches the aquarium heater off while R2 switches it on whenever the water is cold.
+    situation: "Home is in night mode and the water temperature falls below 24 C."
+    undesired_outcome: "R5 switches the aquarium heater off while R2 switches it on; the heater state flips and the water may stay cold."
     key_nodes: [aquarium_heater]

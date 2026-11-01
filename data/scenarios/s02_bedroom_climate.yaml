@@ -1,5 +1,7 @@
 id: s02_bedroom_climate
-name: Family house - bedroom and living room climate
+name: Family house
+split: dev
+family: bedroom_climate
 description: Space heater, ventilation and windows across bedroom and living room.
 rooms: [bedroom, living_room]
 devices:
@@ -84,6 +86,8 @@ cases:
     label: conflict
     type: semantic
     justification: The heater raises the living room temperature, which fires R2 and opens the window while still heating.
+    situation: "R1 turns the living-room heater on at 18:00 and the room warms above 26 C."
+    undesired_outcome: "R2 opens the window and starts the fan while the heater is still heating: energy is wasted and the room is heated and vented at once."
     key_nodes: [heater_living, temp_living]
   - id: s02_c2
     rules: [R3, R2]
@@ -94,10 +98,20 @@ cases:
     label: conflict
     type: semantic
     justification: R2 opens the window, which cools the room and triggers R4 to heat again - a heating/venting loop.
+    situation: "Living room above 26 C triggers R2; the open window then cools the room below 19 C."
+    undesired_outcome: "R4 switches the heater back on: a heat/vent loop that wastes energy."
     key_nodes: [window_living, temp_living]
   - id: s02_c4
     rules: [R1, R5]
     label: conflict
     type: logical
     justification: At 18:00 in away mode R1 turns the living room heater on while R5 turns it off.
+    situation: "At 18:00 while the home is in away mode."
+    undesired_outcome: "R1 turns the living-room heater on and R5 turns it off at the same moment; the final state depends on execution order."
     key_nodes: [heater_living]
+home_conflicts:
+  - rules: [R4, R5]
+    type: logical
+    justification: In away mode R5 switches the living-room heater off at 18:00; once the room drops below 19 C, R4 switches it back on.
+    situation: "Away mode at 18:00 and the living room later drops below 19 C."
+    undesired_outcome: "R4 re-enables the heater that R5 turned off for away mode; the away energy saving is defeated."

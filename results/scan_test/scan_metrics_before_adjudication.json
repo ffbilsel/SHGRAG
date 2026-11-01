@@ -1,0 +1,147 @@
+{
+  "text": {
+    "precision": 0.75,
+    "recall": 0.7647058823529411,
+    "f1": 0.7572815533980582,
+    "typed_recall": 0.5882352941176471,
+    "n_pred": 52,
+    "n_gold": 51,
+    "tp": 39,
+    "fp": 13,
+    "fp_on_labelled_clean": 7,
+    "logical_recall": 1.0,
+    "semantic_recall": 0.2,
+    "physical_recall": 1.0,
+    "ci": {
+      "precision": [
+        0.5853658536585366,
+        0.9333333333333333
+      ],
+      "recall": [
+        0.5454545454545454,
+        0.9411764705882353
+      ],
+      "f1": [
+        0.5825242718446602,
+        0.8910891089108911
+      ]
+    },
+    "n_errors": 0
+  },
+  "text_deps": {
+    "precision": 0.85,
+    "recall": 1.0,
+    "f1": 0.9189189189189189,
+    "typed_recall": 0.9803921568627451,
+    "n_pred": 60,
+    "n_gold": 51,
+    "tp": 51,
+    "fp": 9,
+    "fp_on_labelled_clean": 3,
+    "logical_recall": 1.0,
+    "semantic_recall": 1.0,
+    "physical_recall": 1.0,
+    "ci": {
+      "precision": [
+        0.75,
+        0.9622641509433962
+      ],
+      "recall": [
+        1.0,
+        1.0
+      ],
+      "f1": [
+        0.8571428571428571,
+        0.9807692307692307
+      ]
+    },
+    "n_errors": 0
+  },
+  "graph": {
+    "precision": 0.7846153846153846,
+    "recall": 1.0,
+    "f1": 0.8793103448275863,
+    "typed_recall": 0.9803921568627451,
+    "n_pred": 65,
+    "n_gold": 51,
+    "tp": 51,
+    "fp": 14,
+    "fp_on_labelled_clean": 5,
+    "logical_recall": 1.0,
+    "semantic_recall": 1.0,
+    "physical_recall": 1.0,
+    "ci": {
+      "precision": [
+        0.65,
+        0.9230769230769231
+      ],
+      "recall": [
+        1.0,
+        1.0
+      ],
+      "f1": [
+        0.787878787878788,
+        0.9600000000000001
+      ]
+    },
+    "n_errors": 0
+  },
+  "graph_noaffects": {
+    "precision": 0.75,
+    "recall": 0.8823529411764706,
+    "f1": 0.8108108108108107,
+    "typed_recall": 0.8235294117647058,
+    "n_pred": 60,
+    "n_gold": 51,
+    "tp": 45,
+    "fp": 15,
+    "fp_on_labelled_clean": 5,
+    "logical_recall": 1.0,
+    "semantic_recall": 0.6666666666666666,
+    "physical_recall": 0.9444444444444444,
+    "ci": {
+      "precision": [
+        0.5909090909090909,
+        0.925
+      ],
+      "recall": [
+        0.7435897435897436,
+        0.9824561403508771
+      ],
+      "f1": [
+        0.6666666666666666,
+        0.9263157894736842
+      ]
+    },
+    "n_errors": 0
+  },
+  "symbolic": {
+    "precision": 0.7142857142857143,
+    "recall": 0.8823529411764706,
+    "f1": 0.7894736842105262,
+    "typed_recall": 0.7058823529411765,
+    "n_pred": 21,
+    "n_gold": 17,
+    "tp": 15,
+    "fp": 6,
+    "fp_on_labelled_clean": 2,
+    "logical_recall": 1.0,
+    "semantic_recall": 0.8,
+    "physical_recall": 0.8333333333333334,
+    "ci": {
+      "precision": [
+        0.5909090909090909,
+        0.875
+      ],
+      "recall": [
+        0.75,
+        1.0
+      ],
+      "f1": [
+        0.6875,
+        0.9032258064516129
+      ]
+    },
+    "n_errors": 0
+  }
+}

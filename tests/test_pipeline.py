@@ -76,10 +76,10 @@ def test_run_experiment_end_to_end(scenarios, tmp_path):
     run_experiment(subset, ["text", "graph", "graph_noaffects", "symbolic"], runs=2, out_dir=out, llm=llm, workers=2, progress=False)
     recs = load_records(out)
     assert len(recs) == 8 * 4 * 2
-    for f in ("metrics.json", "results.md", "annotations.csv", "overall_metrics.png", "per_type_recall.png"):
+    for f in ("metrics.json", "results.md", "overall_metrics.png", "per_type_recall.png"):
         assert (out / f).exists(), f
     md = (out / "results.md").read_text()
-    assert "Ablation" in md and "McNemar" in md
+    assert "Ablation" in md and "McNemar" in md and "cluster bootstrap" in md
 
 
 def test_claude_code_backend(cases, tmp_path, monkeypatch):

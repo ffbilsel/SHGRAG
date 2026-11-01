@@ -1,5 +1,7 @@
 id: s14_elderly_care
-name: Elderly resident - medical device and night routines
+name: Bungalow
+split: dev
+family: elderly_care
 description: A CPAP machine, night lights and a fall-detection routine in a senior's apartment.
 rooms: [bedroom, bathroom, corridor, home]
 devices:
@@ -77,14 +79,20 @@ cases:
     label: conflict
     type: physical
     justification: The 'phone charger' plug actually powers the CPAP machine; switching it off at 23:30 stops a medical device.
+    situation: "Night mode is active at 23:30."
+    undesired_outcome: "R1 turns off the bedside plug that actually powers the CPAP machine; a medical device stops during sleep."
     key_nodes: [plug_bedside, cpap]
   - id: s14_c2
     rules: [R3, R4]
     label: conflict
     type: logical
     justification: A fall during night mode needs the door unlocked while R4 keeps locking it.
+    situation: "A fall is detected while the home is (or switches) into night mode."
+    undesired_outcome: "R3 unlocks the entrance for paramedics and R4 locks it; paramedics may be locked out."
     key_nodes: [lock_entrance]
   - id: s14_c3
     rules: [R5, R2]
     label: clean
     justification: The reading lamp plug does not power the CPAP machine.
+    situation: "Near miss: A plug goes off at 23:30, but it powers the reading lamp, not the CPAP."
+    hard: true

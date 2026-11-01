@@ -1,0 +1,159 @@
+id: t03_steam_shower
+name: Mews house
+split: test
+family: steam_smoke_false_alarm
+description: A steam shower next to the upstairs landing, where the photoelectric smoke detector sits.
+rooms: [bathroom, landing, entrance, home]
+devices:
+  - id: steam_generator
+    type: steam_shower_generator
+    room: bathroom
+    description: Steam shower generator; the bathroom door opens onto the landing
+    states: {power: [on, off]}
+  - id: fan_bath
+    type: extractor_fan
+    room: bathroom
+    description: Bathroom extractor fan
+    states: {power: [on, off]}
+  - id: siren
+    type: alarm_siren
+    room: landing
+    description: Indoor siren
+    states: {siren: [on, off]}
+  - id: hvac
+    type: air_handler
+    room: home
+    description: Ducted air handler serving all rooms
+    states: {power: [on, off]}
+  - id: lock_front
+    type: smart_lock
+    room: entrance
+    description: Front door lock
+    states: {lock: [locked, unlocked]}
+environment:
+  - id: smoke_landing
+    room: landing
+    kind: boolean
+    description: Photoelectric smoke detector on the landing
+  - id: humidity_bath
+    room: bathroom
+    kind: numeric
+    description: Bathroom humidity in percent
+  - id: owner_home
+    room: home
+    kind: boolean
+    description: Presence of the owner's phone
+effects:
+  - source: steam_generator.power
+    when: on
+    target: humidity_bath
+    effect: increase
+    kind: environmental
+    description: The steam shower fills the bathroom with steam
+  - source: steam_generator.power
+    when: on
+    target: smoke_landing
+    effect: set
+    value: true
+    kind: environmental
+    description: Steam drifts onto the landing and the photoelectric detector reads the water droplets as smoke
+  - source: fan_bath.power
+    when: on
+    target: humidity_bath
+    effect: decrease
+    kind: environmental
+    description: The extractor fan removes moist air
+rules:
+  - id: R1
+    text: At 06:30 turn on the steam shower generator.
+    trigger: {type: time, at: "06:30"}
+    actions: [{ref: steam_generator.power, value: on}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: Once a Day
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/once-a-day.src/once-a-day.groovy
+      excerpt: Turn on one or more switches at a specified time and turn them off at a later time.
+      adaptation: The "on" time of the app, for the steam generator.
+  - id: R2
+    text: When smoke is detected on the landing, sound the siren and turn off the air handler.
+    trigger: {type: env, ref: smoke_landing, value: true}
+    actions: [{ref: siren.siren, value: on}, {ref: hvac.power, value: off}]
+    source:
+      kind: original
+  - id: R3
+    text: When the owner's phone leaves home, lock the front door.
+    trigger: {type: env, ref: owner_home, value: false}
+    actions: [{ref: lock_front.lock, value: locked}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: Lock It When I Leave
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/lock-it-when-i-leave.src/lock-it-when-i-leave.groovy
+      excerpt: Locks a deadbolt or lever lock when a SmartSense Presence tag or smartphone leaves a location.
+      adaptation: Notification dropped.
+  - id: R4
+    text: When the owner's phone arrives home, unlock the front door.
+    trigger: {type: env, ref: owner_home, value: true}
+    actions: [{ref: lock_front.lock, value: unlocked}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: Unlock It When I Arrive
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/unlock-it-when-i-arrive.src/unlock-it-when-i-arrive.groovy
+      excerpt: Unlocks the door when you arrive at your location.
+      adaptation: None beyond naming the lock.
+  - id: R5
+    text: When bathroom humidity rises above 75 %, turn on the extractor fan.
+    trigger: {type: env, ref: humidity_bath, op: ">", value: 75}
+    actions: [{ref: fan_bath.power, value: on}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: It's Too Hot
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/its-too-hot.src/its-too-hot.groovy
+      excerpt: turn on an A/C unit or fan
+      adaptation: The same threshold pattern applied to humidity instead of temperature.
+  - id: R6
+    text: At 07:00 turn off the steam shower generator.
+    trigger: {type: time, at: "07:00"}
+    actions: [{ref: steam_generator.power, value: off}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: Once a Day
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/once-a-day.src/once-a-day.groovy
+      excerpt: Turn on one or more switches at a specified time and turn them off at a later time.
+      adaptation: The "off" time of the app.
+cases:
+  - id: t03_c1
+    rules: [R1, R2]
+    label: conflict
+    type: semantic
+    justification: Steam from the 06:30 shower reaches the landing, the photoelectric detector reports smoke and R2 sounds the siren and stops the air handler.
+    situation: "Every morning at 06:30 when the steam shower starts."
+    undesired_outcome: "A false fire alarm wakes the household and the air handler is shut down."
+    key_nodes: [steam_generator, smoke_landing]
+  - id: t03_c2
+    rules: [R1, R5]
+    label: clean
+    justification: The steam raises bathroom humidity and R5 starts the extractor fan; this is the intended reaction.
+    situation: "Near miss: one rule's effect triggers the other, but as designed."
+    hard: true
+  - id: t03_c3
+    rules: [R1, R6]
+    label: clean
+    justification: On at 06:30, off at 07:00 is a normal schedule.
+  - id: t03_c4
+    rules: [R3, R4]
+    label: clean
+    justification: Lock on leaving and unlock on arriving act on the same lock under mutually exclusive presence states.
+    situation: "Near miss: opposite actions on the same lock."
+    hard: true
+  - id: t03_c5
+    rules: [R2, R3]
+    label: clean
+    justification: The smoke rule does not touch the lock, and leaving home does not affect smoke detection.
+home_conflicts: []
+home_clean_notes:
+  "R2+R6": "Switching the steam generator off stops the false smoke reading; it does not cause one."

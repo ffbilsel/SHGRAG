@@ -1,0 +1,290 @@
+[
+  {
+    "scenario_id": "s03_robot_vacuum",
+    "rules": [
+      "R1",
+      "R4"
+    ],
+    "votes": 2,
+    "conditions": [
+      "text"
+    ],
+    "example": {
+      "rules": [
+        "R1",
+        "R4"
+      ],
+      "conflict_type": "semantic",
+      "situation": "Weekdays at 10:00, when the vacuum's cleaning route goes through the bedroom.",
+      "undesired_outcome": "The entrance light turns on for no reason, possibly while no one is home, which wastes energy.",
+      "explanation": "The vacuum's movement in the bedroom sets motion_bedroom to True, which triggers R4 to turn on the entrance light."
+    },
+    "already_reviewed_clean": "clean case s03_c3: The vacuum cleans the living room; the bedroom motion sensor is not affected."
+  },
+  {
+    "scenario_id": "s07_irrigation_water",
+    "rules": [
+      "R1",
+      "R4"
+    ],
+    "votes": 1,
+    "conditions": [
+      "symbolic"
+    ],
+    "example": {
+      "rules": [
+        "R1",
+        "R4"
+      ],
+      "conflict_type": "physical",
+      "situation": "",
+      "undesired_outcome": "",
+      "explanation": "R1 indirectly sets irrigation.flow=off, disabling the device R4 controls"
+    },
+    "already_reviewed_clean": "Closing the main valve cuts irrigation flow; R4 only stops watering, so nothing is lost."
+  },
+  {
+    "scenario_id": "s07_irrigation_water",
+    "rules": [
+      "R2",
+      "R4"
+    ],
+    "votes": 1,
+    "conditions": [
+      "symbolic"
+    ],
+    "example": {
+      "rules": [
+        "R2",
+        "R4"
+      ],
+      "conflict_type": "logical",
+      "situation": "",
+      "undesired_outcome": "",
+      "explanation": "R2 sets irrigation.watering=on while R4 sets it to off"
+    },
+    "already_reviewed_clean": "clean case s07_c2: Stopping irrigation when the soil is wet is the intended feedback loop."
+  },
+  {
+    "scenario_id": "s07_irrigation_water",
+    "rules": [
+      "R2",
+      "R5"
+    ],
+    "votes": 3,
+    "conditions": [
+      "text"
+    ],
+    "example": {
+      "rules": [
+        "R5",
+        "R2"
+      ],
+      "conflict_type": "physical",
+      "situation": "Home is in away mode (outdoor tap valve closed by R5) and it is 06:00.",
+      "undesired_outcome": "The garden irrigation fed from the outdoor tap gets no water while it is commanded on, so the garden goes unwatered while the owners are away.",
+      "explanation": "If irrigation is fed from the outdoor (garden) valve, which is likely but not stated, R5 closing it blocks the flow R2 tries to start."
+    },
+    "already_reviewed_clean": "clean case s07_c3: The outdoor tap valve is a separate line and does not feed the irrigation controller."
+  },
+  {
+    "scenario_id": "s07_irrigation_water",
+    "rules": [
+      "R3",
+      "R4"
+    ],
+    "votes": 1,
+    "conditions": [
+      "symbolic"
+    ],
+    "example": {
+      "rules": [
+        "R3",
+        "R4"
+      ],
+      "conflict_type": "physical",
+      "situation": "",
+      "undesired_outcome": "",
+      "explanation": "R3 indirectly sets irrigation.flow=off, disabling the device R4 controls"
+    },
+    "already_reviewed_clean": "Same as R1+R4: a closed valve and a stop-watering rule do not conflict."
+  },
+  {
+    "scenario_id": "s08_lighting_blinds",
+    "rules": [
+      "R2",
+      "R4"
+    ],
+    "votes": 1,
+    "conditions": [
+      "symbolic"
+    ],
+    "example": {
+      "rules": [
+        "R2",
+        "R4"
+      ],
+      "conflict_type": "semantic",
+      "situation": "",
+      "undesired_outcome": "",
+      "explanation": "R4's action blinds_living.position=closed decreases lux_living, which triggers R2"
+    },
+    "already_reviewed_clean": "Closing the blinds at 22:00 lowers the light level, but it is already dark; switching the lights on at night is intended."
+  },
+  {
+    "scenario_id": "s10_wall_switch_bulbs",
+    "rules": [
+      "R3",
+      "R4"
+    ],
+    "votes": 1,
+    "conditions": [
+      "symbolic"
+    ],
+    "example": {
+      "rules": [
+        "R3",
+        "R4"
+      ],
+      "conflict_type": "logical",
+      "situation": "",
+      "undesired_outcome": "",
+      "explanation": "R3 sets bulb_corridor.power=off while R4 sets it to on"
+    },
+    "already_reviewed_clean": "clean case s10_c2: The corridor bulb is turned off by a soft command (relay stays on) and turned back on at 06:30 - normal schedule."
+  },
+  {
+    "scenario_id": "s11_thermostat_schedule",
+    "rules": [
+      "R1",
+      "R3"
+    ],
+    "votes": 2,
+    "conditions": [
+      "symbolic",
+      "text"
+    ],
+    "example": {
+      "rules": [
+        "R1",
+        "R3"
+      ],
+      "conflict_type": "semantic",
+      "situation": "",
+      "undesired_outcome": "",
+      "explanation": "R1's action thermostat.mode=heat increases temp_living, which triggers R3"
+    },
+    "already_reviewed_clean": "R1 heats to a 23 C setpoint, below R3's 24 C cooling threshold, so the heating does not trigger cooling."
+  },
+  {
+    "scenario_id": "s12_garage_ev",
+    "rules": [
+      "R1",
+      "R3"
+    ],
+    "votes": 4,
+    "conditions": [
+      "graph_noaffects",
+      "text"
+    ],
+    "example": {
+      "rules": [
+        "R1",
+        "R3"
+      ],
+      "conflict_type": "physical",
+      "situation": "Both rules fire at the same moment when home_mode changes to away; the breaker may go off before the door finishes closing.",
+      "undesired_outcome": "The garage door motor loses power and the door is left open or half-open while the home is empty, which is a security risk.",
+      "explanation": "The garage door opener most likely runs on the garage circuit that R1 cuts. A race between R1 and R3 can stop the door from closing."
+    },
+    "already_reviewed_clean": "The garage door is not on the garage circuit in this home; the breaker does not stop the door."
+  },
+  {
+    "scenario_id": "s12_garage_ev",
+    "rules": [
+      "R1",
+      "R5"
+    ],
+    "votes": 1,
+    "conditions": [
+      "graph_noaffects"
+    ],
+    "example": {
+      "rules": [
+        "R1",
+        "R5"
+      ],
+      "conflict_type": "physical",
+      "situation": "The car arrives in the garage while the home is still in away mode and the garage breaker is off.",
+      "undesired_outcome": "The garage light does not turn on, so the driver has to park and move around in the dark.",
+      "explanation": "R5 turns on the garage light, but the light has no power because R1 switched off the garage breaker."
+    },
+    "already_reviewed_clean": "The garage light is not on the garage circuit in this home."
+  },
+  {
+    "scenario_id": "s13_pet_feeder",
+    "rules": [
+      "R1",
+      "R3"
+    ],
+    "votes": 1,
+    "conditions": [
+      "symbolic"
+    ],
+    "example": {
+      "rules": [
+        "R1",
+        "R3"
+      ],
+      "conflict_type": "semantic",
+      "situation": "",
+      "undesired_outcome": "",
+      "explanation": "R1's action feeder.dispensing=on sets motion_kitchen, which triggers R3"
+    },
+    "already_reviewed_clean": "clean case s13_c2: Recording the cat eating is harmless and arguably intended."
+  },
+  {
+    "scenario_id": "s13_pet_feeder",
+    "rules": [
+      "R1",
+      "R6"
+    ],
+    "votes": 1,
+    "conditions": [
+      "symbolic"
+    ],
+    "example": {
+      "rules": [
+        "R1",
+        "R6"
+      ],
+      "conflict_type": "semantic",
+      "situation": "",
+      "undesired_outcome": "",
+      "explanation": "R1's action feeder.dispensing=on sets motion_kitchen, which triggers R6"
+    },
+    "already_reviewed_clean": "The cat's motion makes R6 stop recording while someone is at home; that is the privacy intent of R6, not a conflict."
+  },
+  {
+    "scenario_id": "s16_server_closet",
+    "rules": [
+      "R1",
+      "R3"
+    ],
+    "votes": 1,
+    "conditions": [
+      "symbolic"
+    ],
+    "example": {
+      "rules": [
+        "R1",
+        "R3"
+      ],
+      "conflict_type": "semantic",
+      "situation": "",
+      "undesired_outcome": "",
+      "explanation": "R1's action nas.backup=running increases temp_closet, which triggers R3"
+    },
+    "already_reviewed_clean": "clean case s16_c3: The backup heats the closet and the fan responds as intended - a designed feedback loop."
+  }
+]

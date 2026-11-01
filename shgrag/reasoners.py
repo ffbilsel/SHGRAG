@@ -1,6 +1,8 @@
 """Conflict reasoners evaluated in the experiments.
 
   text            LLM sees only the raw rules                (baseline A)
+  text_deps       raw rules + all devices, variables and dependencies of the
+                  home as flat text (no retrieval, no chains)  (information control)
   graph           LLM sees the retrieved subgraph            (system B)
   graph_noaffects LLM sees a subgraph built without AFFECTS  (ablation)
   symbolic        deterministic graph checker, no LLM        (rule-based reference)
@@ -14,12 +16,12 @@ import networkx as nx
 
 from .graph_builder import build_graph, node_label, rule_node
 from .llm import LLMClient
-from .prompts import graph_prompt, text_only_prompt
+from .prompts import graph_prompt, text_deps_prompt, text_only_prompt
 from .retriever import Retrieval, _causal_paths, _device_of, retrieve
 from .schema import Scenario
 
-CONDITIONS = ("text", "graph", "graph_noaffects", "symbolic")
-LLM_CONDITIONS = ("text", "graph", "graph_noaffects")
+CONDITIONS = ("text", "text_deps", "graph", "graph_noaffects", "symbolic")
+LLM_CONDITIONS = ("text", "text_deps", "graph", "graph_noaffects")
 
 
 @dataclass
@@ -88,6 +90,13 @@ class TextOnlyReasoner:
 
     def predict(self, scenario: Scenario, rule_ids: list[str], run: int = 0) -> Prediction:
         return _from_llm(self.llm.verdict(self.prompt(scenario, rule_ids), run))
+
+
+class TextDepsReasoner(TextOnlyReasoner):
+    name = "text_deps"
+
+    def prompt(self, scenario: Scenario, rule_ids: list[str]) -> str:
+        return text_deps_prompt(scenario, rule_ids)
 
 
 class GraphReasoner:
@@ -280,6 +289,8 @@ def make_reasoner(name: str, llm: LLMClient | None = None):
         raise ValueError(f"reasoner {name} needs an LLM client")
     if name == "text":
         return TextOnlyReasoner(llm)
+    if name == "text_deps":
+        return TextDepsReasoner(llm)
     if name == "graph":
         return GraphReasoner(llm, include_effects=True)
     if name == "graph_noaffects":

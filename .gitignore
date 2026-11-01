@@ -10,6 +10,12 @@ __pycache__/
 results/*
 !results/symbolic/
 !results/main/
+!results/test/
+!results/test_errata/
+!results/scan_dev/
+!results/scan_test/
+!results/repair/
+!results/annotation/
 # original source documents (kept local)
 tmp/
 # contains private correspondence; keep local unless the repo is private

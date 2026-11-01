@@ -1,0 +1,153 @@
+id: t05_mode_chain
+name: Courtyard flat
+split: test
+family: hub_mode_chaining
+description: Location modes are set by presence and motion apps; other apps react to mode changes.
+rooms: [living_room, home]
+devices:
+  - id: hub
+    type: hub
+    room: home
+    description: Smart-home hub; its location mode is exposed as a state
+    states: {mode: [home, away, night]}
+  - id: thermostat
+    type: thermostat
+    room: home
+    description: Central heating thermostat
+    states: {setpoint: []}
+  - id: camera_living
+    type: camera
+    room: living_room
+    description: Indoor camera
+    states: {recording: [on, off]}
+  - id: lights_living
+    type: lights
+    room: living_room
+    description: Living room ceiling lights
+    states: {power: [on, off]}
+environment:
+  - id: everyone_away
+    room: home
+    kind: boolean
+    description: True when all household phones have left
+  - id: motion_living
+    room: living_room
+    kind: boolean
+    description: Living room motion sensor
+effects: []
+rules:
+  - id: R1
+    text: When everyone has left, change the mode to away.
+    trigger: {type: env, ref: everyone_away, value: true}
+    actions: [{ref: hub.mode, value: away}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: Bon Voyage
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/bon-voyage.src/bon-voyage.groovy
+      excerpt: triggers a mode change when everyone has left
+      adaptation: None beyond the mode name.
+  - id: R2
+    text: When motion stops in the living room between 22:00 and 02:00, change the mode to night.
+    trigger: {type: env, ref: motion_living, value: false}
+    conditions: [{type: time_range, start: "22:00", end: "02:00"}]
+    actions: [{ref: hub.mode, value: night}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: Good Night
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/good-night.src/good-night.groovy
+      excerpt: Changes mode when motion ceases after a specific time of night.
+      adaptation: The "after a specific time" setting is 22:00 and the window ends at 02:00.
+  - id: R3
+    text: When the mode changes to away, set the thermostat to 16 C.
+    trigger: {type: state, ref: hub.mode, value: away}
+    actions: [{ref: thermostat.setpoint, value: 16}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: Keep Me Cozy
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/keep-me-cozy.src/keep-me-cozy.groovy
+      excerpt: Changes your thermostat settings automatically in response to a mode change.
+      adaptation: Single setpoint for the away mode.
+  - id: R4
+    text: When the mode changes to night, set the thermostat to 19 C.
+    trigger: {type: state, ref: hub.mode, value: night}
+    actions: [{ref: thermostat.setpoint, value: 19}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: Keep Me Cozy
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/keep-me-cozy.src/keep-me-cozy.groovy
+      excerpt: Changes your thermostat settings automatically in response to a mode change.
+      adaptation: Single setpoint for the night mode.
+  - id: R5
+    text: When motion is detected in the living room between 06:00 and 10:00, change the mode to home.
+    trigger: {type: env, ref: motion_living, value: true}
+    conditions: [{type: time_range, start: "06:00", end: "10:00"}]
+    actions: [{ref: hub.mode, value: home}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: Rise and Shine
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/rise-and-shine.src/rise-and-shine.groovy
+      excerpt: Changes mode when someone wakes up after a set time in the morning.
+      adaptation: The wake-up window is 06:00-10:00.
+  - id: R6
+    text: When the mode changes to away, start recording on the living room camera.
+    trigger: {type: state, ref: hub.mode, value: away}
+    actions: [{ref: camera_living.recording, value: on}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: Cameras On When I'm Away
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/cameras-on-when-im-away.src/cameras-on-when-im-away.groovy
+      excerpt: Turn cameras on when I'm away
+      adaptation: None beyond naming the camera.
+  - id: R7
+    text: When the mode changes to night, stop recording on the living room camera for privacy.
+    trigger: {type: state, ref: hub.mode, value: night}
+    actions: [{ref: camera_living.recording, value: off}]
+    source:
+      kind: original
+cases:
+  - id: t05_c1
+    rules: [R1, R2]
+    label: conflict
+    type: logical
+    justification: If everyone leaves after 22:00, R1 sets away; the empty living room then stops reporting motion and R2 sets night, overwriting away.
+    situation: "Everyone leaves home between 22:00 and 02:00."
+    undesired_outcome: "The mode ends up night instead of away, so away settings are replaced by night settings in an empty home."
+    key_nodes: [hub]
+  - id: t05_c2
+    rules: [R2, R5]
+    label: clean
+    justification: Night is set between 22:00 and 02:00 and home between 06:00 and 10:00; the windows do not overlap.
+    situation: "Near miss: two rules write different modes, but in non-overlapping time windows."
+    hard: true
+  - id: t05_c3
+    rules: [R3, R4]
+    label: clean
+    justification: Different setpoints for different modes; the triggers are mutually exclusive.
+  - id: t05_c4
+    rules: [R1, R6]
+    label: clean
+    justification: Away mode set by R1 starts the camera through R6; this chain is the intended use of the mode.
+    situation: "Near miss: one rule's action triggers the other, but intentionally."
+    hard: true
+  - id: t05_c5
+    rules: [R6, R7]
+    label: clean
+    justification: Camera on in away and off in night are triggered by mutually exclusive modes.
+    situation: "Near miss: opposite actions on the same camera."
+    hard: true
+home_conflicts:
+  - rules: [R1, R5]
+    type: logical
+    justification: While everyone is away, any living-room motion between 06:00 and 10:00 (an intruder) makes R5 switch the mode from away to home.
+    situation: "The home is in away mode and motion is detected in the living room between 06:00 and 10:00."
+    undesired_outcome: "An intruder's movement disarms away mode (camera and away settings no longer apply)."
+    added_by: adjudication
+home_clean_notes:
+  "R1+R7": "R1 sets away; R7 only reacts to night."
+  "R2+R6": "R2 sets night; R6 only reacts to away."

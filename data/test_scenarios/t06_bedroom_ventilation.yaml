@@ -1,0 +1,144 @@
+id: t06_bedroom_ventilation
+name: Split-level house
+split: test
+family: trv_window_open_detection
+description: Bedroom with a motorised window, a radiator thermostat (TRV) with window-open detection and an air purifier.
+rooms: [bedroom, home]
+devices:
+  - id: window_bed
+    type: window_opener
+    room: bedroom
+    description: Motorised bedroom window
+    states: {position: [open, closed]}
+  - id: trv_bed
+    type: radiator_thermostat
+    room: bedroom
+    description: Radiator thermostat (TRV) with window-open detection enabled
+    states: {heating: [on, off]}
+  - id: purifier_bed
+    type: air_purifier
+    room: bedroom
+    description: Air purifier
+    states: {power: [on, off]}
+environment:
+  - id: co2_bed
+    room: bedroom
+    kind: numeric
+    description: Bedroom CO2 in ppm
+  - id: pm25_outdoor
+    room: home
+    kind: numeric
+    description: Outdoor PM2.5 from the local air-quality service
+  - id: temp_bed
+    room: bedroom
+    kind: numeric
+    description: Bedroom temperature
+effects:
+  - source: window_bed.position
+    when: open
+    target: trv_bed.heating
+    effect: set
+    value: off
+    kind: physical
+    description: The TRV detects the temperature drop of an open window and closes the radiator valve
+  - source: window_bed.position
+    when: open
+    target: co2_bed
+    effect: decrease
+    kind: environmental
+    description: Fresh air lowers CO2
+  - source: trv_bed.heating
+    when: on
+    target: temp_bed
+    effect: increase
+    kind: environmental
+    description: The radiator warms the bedroom
+rules:
+  - id: R1
+    text: At 07:00 open the bedroom window.
+    trigger: {type: time, at: "07:00"}
+    actions: [{ref: window_bed.position, value: open}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: Once a Day
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/once-a-day.src/once-a-day.groovy
+      excerpt: Turn on one or more switches at a specified time and turn them off at a later time.
+      adaptation: The switched device is a window opener ("on" = open).
+  - id: R2
+    text: At 06:45 start heating the bedroom radiator for the morning.
+    trigger: {type: time, at: "06:45"}
+    actions: [{ref: trv_bed.heating, value: on}]
+    source:
+      kind: original
+  - id: R3
+    text: At 07:30 close the bedroom window.
+    trigger: {type: time, at: "07:30"}
+    actions: [{ref: window_bed.position, value: closed}]
+    source:
+      kind: adapted
+      platform: SmartThings
+      app: Once a Day
+      url: https://github.com/SmartThingsCommunity/SmartThingsPublic/blob/master/smartapps/smartthings/once-a-day.src/once-a-day.groovy
+      excerpt: Turn on one or more switches at a specified time and turn them off at a later time.
+      adaptation: The "off" time of the app ("off" = closed).
+  - id: R4
+    text: When bedroom CO2 exceeds 1000 ppm, open the bedroom window.
+    trigger: {type: env, ref: co2_bed, op: ">", value: 1000}
+    actions: [{ref: window_bed.position, value: open}]
+    source:
+      kind: original
+  - id: R5
+    text: When outdoor PM2.5 exceeds 35, close the bedroom window and turn on the air purifier.
+    trigger: {type: env, ref: pm25_outdoor, op: ">", value: 35}
+    actions: [{ref: window_bed.position, value: closed}, {ref: purifier_bed.power, value: on}]
+    source:
+      kind: original
+cases:
+  - id: t06_c1
+    rules: [R1, R2]
+    label: conflict
+    type: physical
+    justification: The TRV's window-open detection closes the radiator valve when R1 opens the window, cancelling R2's morning warm-up.
+    situation: "Every morning from 07:00, while the window is open."
+    undesired_outcome: "The bedroom is not heated during the warm-up period; the room is cold when the occupants get up."
+    key_nodes: [window_bed, trv_bed]
+  - id: t06_c2
+    rules: [R4, R5]
+    label: conflict
+    type: logical
+    justification: High indoor CO2 makes R4 open the window while high outdoor PM2.5 makes R5 close it.
+    situation: "Indoor CO2 above 1000 ppm on a day with outdoor PM2.5 above 35 (e.g. wildfire smoke)."
+    undesired_outcome: "The window is opened and closed by the two rules; polluted air gets in or the room stays stuffy."
+    key_nodes: [window_bed]
+  - id: t06_c3
+    rules: [R1, R3]
+    label: clean
+    justification: Open at 07:00 and close at 07:30 is a normal ventilation schedule.
+    situation: "Near miss: opposite actions on the same window, at different times."
+    hard: true
+  - id: t06_c4
+    rules: [R3, R5]
+    label: clean
+    justification: Both rules close the window; they agree.
+    situation: "Near miss: two rules act on the same window, with the same value."
+    hard: true
+home_conflicts:
+  - rules: [R2, R4]
+    type: physical
+    justification: When high CO2 makes R4 open the window, the TRV stops the heating that R2 started.
+    situation: "CO2 rises above 1000 ppm after 06:45 while heating is wanted."
+    undesired_outcome: "The radiator valve closes and the bedroom cools."
+  - rules: [R1, R5]
+    type: logical
+    justification: On a day with PM2.5 above 35 at 07:00, R1 opens the window that R5 keeps closed for air quality.
+    situation: "Outdoor PM2.5 above 35 at 07:00."
+    undesired_outcome: "Polluted outdoor air is let into the bedroom."
+  - rules: [R3, R4]
+    type: logical
+    justification: After R3 closes the window at 07:30, CO2 rises again and R4 reopens it, so the scheduled close does not hold (and the TRV stays off while the window is open).
+    situation: "Bedroom still occupied after 07:30 so CO2 climbs back above 1000 ppm."
+    undesired_outcome: "The window is reopened against the 07:30 schedule; the window cycles and the room is not heated."
+    added_by: adjudication
+home_clean_notes:
+  "R2+R3": "Closing the window lets the TRV resume heating; no conflict."

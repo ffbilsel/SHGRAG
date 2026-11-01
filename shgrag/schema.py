@@ -92,12 +92,32 @@ class Action(_Strict):
     value: Scalar
 
 
+class Source(_Strict):
+    """Provenance of a rule. `original` = written by the benchmark author.
+    `adapted` = adapted from a public example; `excerpt` is a verbatim string
+    that must appear at `url` (checked by `python -m shgrag check-sources`)."""
+
+    kind: Literal["original", "adapted"]
+    platform: str | None = None  # e.g. "SmartThings", "Home Assistant"
+    app: str | None = None  # name of the public example
+    url: str | None = None
+    excerpt: str | None = None
+    adaptation: str | None = None  # what was changed when adapting
+
+    @model_validator(mode="after")
+    def _check(self) -> "Source":
+        if self.kind == "adapted" and not (self.url and self.excerpt and self.adaptation):
+            raise ValueError("adapted rules need url, excerpt and adaptation")
+        return self
+
+
 class Rule(_Strict):
     id: str
     text: str
     trigger: Trigger
     conditions: list[Condition] = Field(default_factory=list)
     actions: list[Action]
+    source: Source | None = None  # None = original, written by the benchmark author
 
 
 class Case(_Strict):
@@ -106,8 +126,14 @@ class Case(_Strict):
     label: Label
     type: ConflictType | None = None
     justification: str
+    # Conflict cases: the situation in which the conflict shows up (time, mode,
+    # sensor values) and the undesired outcome it produces. Clean cases may use
+    # `situation` to name the near-miss that makes them look like a conflict.
+    situation: str | None = None
+    undesired_outcome: str | None = None
     # graph nodes a correct explanation should mention (used as an automatic proxy check)
     key_nodes: list[str] = Field(default_factory=list)
+    hard: bool = False  # clean case built to look like a conflict (near-miss)
 
     @model_validator(mode="after")
     def _check(self) -> "Case":
@@ -115,7 +141,24 @@ class Case(_Strict):
             raise ValueError(f"case {self.id}: conflict cases need a 'type'")
         if self.label == "clean" and self.type is not None:
             raise ValueError(f"case {self.id}: clean cases must not have a 'type'")
+        if self.label == "conflict" and not (self.situation and self.undesired_outcome):
+            raise ValueError(f"case {self.id}: conflict cases need 'situation' and 'undesired_outcome'")
+        if self.label == "conflict" and self.hard:
+            raise ValueError(f"case {self.id}: 'hard' marks clean near-miss cases only")
         return self
+
+
+class HomeConflict(_Strict):
+    """A conflict in the home that is not one of the evaluation cases. Together
+    with the conflict cases it forms the complete conflict list used by the
+    whole-home scan experiment."""
+
+    rules: list[str]
+    type: ConflictType
+    justification: str
+    situation: str
+    undesired_outcome: str
+    added_by: Literal["author", "adjudication"] = "author"
 
 
 class Scenario(_Strict):
@@ -128,6 +171,18 @@ class Scenario(_Strict):
     effects: list[Effect] = Field(default_factory=list)
     rules: list[Rule]
     cases: list[Case]
+    # dev = benchmark used while building the prompts; test = held-out homes
+    split: Literal["dev", "test"] = "dev"
+    family: str | None = None  # scenario family; dev and test families must not overlap
+    home_conflicts: list[HomeConflict] = Field(default_factory=list)
+    # rule sets reviewed for the whole-home scan and judged clean (with reason)
+    home_clean_notes: dict[str, str] = Field(default_factory=dict)
+
+    def all_conflicts(self) -> list[tuple[frozenset[str], str]]:
+        """Complete conflict list of the home: conflict cases + home_conflicts."""
+        out = [(frozenset(c.rules), c.type) for c in self.cases if c.label == "conflict"]
+        out += [(frozenset(h.rules), h.type) for h in self.home_conflicts]
+        return out
 
     # ---- lookups -------------------------------------------------------
     def rule(self, rule_id: str) -> Rule:
@@ -183,6 +238,13 @@ class Scenario(_Strict):
             for rid in c.rules:
                 if rid not in rule_ids:
                     errors.append(f"case {c.id}: unknown rule {rid}")
+        for h in self.home_conflicts:
+            for rid in h.rules:
+                if rid not in rule_ids:
+                    errors.append(f"home conflict {h.rules}: unknown rule {rid}")
+        sets = [frozenset(c.rules) for c in self.cases] + [frozenset(h.rules) for h in self.home_conflicts]
+        if len(sets) != len(set(sets)):
+            errors.append("the same rule set is listed twice in cases/home_conflicts")
         if errors:
             raise ValueError(f"scenario {self.id}: " + "; ".join(errors))
         return self

@@ -1,0 +1,367 @@
+# Repair-verification benchmark: 15 dev conflict cases, 5 per type.
+#
+# Each case has
+#   hazard:  simulation runs that show the undesired outcome on the original
+#            rules. A repair must make every hazard run come out false.
+#   intent:  simulation runs that check what each rule is for. They pass on
+#            the original rules and must still pass after the repair.
+# Runs simulate only the rules of the case (`scope: case`), so a hazard is not
+# masked by another conflict of the same home. New conflicts elsewhere in the
+# home are checked separately by a whole-home symbolic re-check.
+#
+# `requires` lists the rules whose removal must make each hazard vanish (default:
+# every rule of the case). For a conflict where one rule defeats the other's
+# purpose, only the defeating rule is required; the defeated rule's purpose
+# is what the intent runs check.
+#
+# `base_init` is merged into the init of every run of the case; every effect
+# source must be set explicitly (checked), because default values can silently
+# start an effect.
+#
+# Spec keys (see shgrag/simulate.py): start (HH:MM), minutes, init, events
+# [{at, set}], and one of ever / at_end (lists of {ref, op, value}),
+# write_conflict (ref) or fires (rule id). `dynamics` sets rate/max/min for
+# increase/decrease effects (per minute).
+
+- case: s01_c1
+  base_init: {plug_hall.power: "on"}  # explicit state of every effect source
+  requires: [R1]  # removing this rule must remove the hazard; the other rule's purpose is checked by the intent runs
+  hazard:
+    - name: away mode at night, camera unpowered
+      start: "22:00"
+      minutes: 90
+      init: {home_mode: home, camera_hall.recording: "off"}
+      events: [{at: "22:30", set: {home_mode: away}}]
+      ever: [{ref: camera_hall.power, value: "off"}, {ref: home_mode, value: away}]
+  intent:
+    - name: R1 switches the hallway plug off at 23:00 when someone is home
+      start: "22:50"
+      minutes: 20
+      init: {home_mode: home, camera_hall.recording: "off"}
+      at_end: [{ref: plug_hall.power, value: "off"}]
+    - name: R2 starts recording when the home goes to away mode
+      start: "10:00"
+      minutes: 5
+      init: {home_mode: home, camera_hall.recording: "off"}
+      events: [{at: "10:01", set: {home_mode: away}}]
+      at_end: [{ref: camera_hall.recording, value: "on"}, {ref: camera_hall.power, value: "on"}]
+
+- case: s05_c1
+  base_init: {plug_office.power: "on", router.power: "on"}  # explicit state of every effect source
+  requires: [R1]  # removing this rule must remove the hazard; the other rule's purpose is checked by the intent runs
+  hazard:
+    - name: night mode, office plug off at 00:30
+      start: "23:00"
+      minutes: 120
+      init: {home_mode: home, camera_garden.cloud_upload: "off", camera_garden.recording: "off"}
+      events: [{at: "23:30", set: {home_mode: night}}]
+      ever: [{ref: camera_garden.cloud_upload, value: "off"}, {ref: home_mode, value: night}]
+  intent:
+    - name: R1 switches the office plug off at 00:30 on a normal (home-mode) night
+      start: "00:00"
+      minutes: 40
+      init: {home_mode: home}
+      at_end: [{ref: plug_office.power, value: "off"}]
+    - name: R2 enables cloud upload in night mode
+      start: "23:00"
+      minutes: 10
+      init: {home_mode: home, camera_garden.cloud_upload: "off", camera_garden.recording: "off"}
+      events: [{at: "23:05", set: {home_mode: night}}]
+      at_end: [{ref: camera_garden.cloud_upload, value: "on"}, {ref: camera_garden.recording, value: "on"}]
+
+- case: s12_c1
+  base_init: {breaker_garage.power: "on"}  # explicit state of every effect source
+  requires: [R1]  # removing this rule must remove the hazard; the other rule's purpose is checked by the intent runs
+  hazard:
+    - name: CO in the garage while away
+      start: "09:00"
+      minutes: 60
+      init: {home_mode: home, fan_garage.power: "off", co_garage: false}
+      events: [{at: "09:10", set: {home_mode: away}}, {at: "09:30", set: {co_garage: true}}]
+      ever: [{ref: co_garage, value: true}, {ref: fan_garage.power, value: "off"}]
+  intent:
+    - name: R1 cuts the garage circuit when the home goes to away mode
+      start: "09:00"
+      minutes: 20
+      init: {home_mode: home}
+      events: [{at: "09:05", set: {home_mode: away}}]
+      at_end: [{ref: breaker_garage.power, value: "off"}]
+    - name: R2 vents CO while someone is home
+      start: "12:00"
+      minutes: 10
+      init: {home_mode: home, fan_garage.power: "off", garage_door.position: closed}
+      events: [{at: "12:01", set: {co_garage: true}}]
+      at_end: [{ref: fan_garage.power, value: "on"}, {ref: garage_door.position, value: open}]
+
+- case: s14_c1
+  base_init: {plug_bedside.power: "on"}  # explicit state of every effect source
+  requires: [R1]  # removing this rule must remove the hazard; the other rule's purpose is checked by the intent runs
+  hazard:
+    - name: night mode, bedside plug off at 23:30
+      start: "22:00"
+      minutes: 120
+      init: {home_mode: home, cpap.power: "off"}
+      events: [{at: "22:30", set: {home_mode: night}}]
+      ever: [{ref: home_mode, value: night}, {ref: cpap.power, value: "off"}, {ref: plug_bedside.power, value: "off"}]
+  intent:
+    - name: R2 switches the CPAP on in night mode
+      start: "21:00"
+      minutes: 10
+      init: {home_mode: home, cpap.power: "off"}
+      events: [{at: "21:05", set: {home_mode: night}}]
+      at_end: [{ref: cpap.power, value: "on"}]
+    - name: R1 saves energy at 23:30 when nobody is sleeping (home mode)
+      start: "23:20"
+      minutes: 20
+      init: {home_mode: home}
+      at_end: [{ref: plug_bedside.power, value: "off"}]
+
+- case: s16_c2
+  base_init: {nas.backup: idle, strip_closet.power: "on", fan_closet.power: "off"}  # explicit state of every effect source
+  requires: [R2]  # removing this rule must remove the hazard; the other rule's purpose is checked by the intent runs
+  dynamics:
+    temp_closet: {rate: 1.0, min: 25}
+  hazard:
+    - name: closet overheats in night mode
+      start: "00:00"
+      minutes: 60
+      init: {home_mode: home, temp_closet: 30, fan_closet.power: "off"}
+      events: [{at: "00:10", set: {home_mode: night}}, {at: "00:30", set: {temp_closet: 36}}]
+      ever: [{ref: temp_closet, op: ">", value: 35}, {ref: fan_closet.power, value: "off"}, {ref: home_mode, value: night}]
+  intent:
+    - name: R2 switches the closet strip off in night mode
+      start: "23:00"
+      minutes: 10
+      init: {home_mode: home, temp_closet: 25}
+      events: [{at: "23:05", set: {home_mode: night}}]
+      at_end: [{ref: strip_closet.power, value: "off"}]
+    - name: R3 cools the closet when it gets hot during the day
+      start: "14:00"
+      minutes: 10
+      init: {home_mode: home, temp_closet: 30, fan_closet.power: "off"}
+      events: [{at: "14:02", set: {temp_closet: 36}}]
+      ever: [{ref: fan_closet.power, value: "on"}]
+
+- case: s01_c2
+  base_init: {plug_hall.power: "on"}  # explicit state of every effect source
+  requires: [R4]  # removing this rule must remove the hazard; the other rule's purpose is checked by the intent runs
+  hazard:
+    - name: hallway motion during night mode
+      start: "22:00"
+      minutes: 120
+      init: {home_mode: home, lock_front.lock: unlocked, motion_hall: false}
+      events: [{at: "22:30", set: {home_mode: night}}, {at: "23:00", set: {motion_hall: true}}, {at: "23:01", set: {motion_hall: false}}]
+      ever: [{ref: home_mode, value: night}, {ref: lock_front.lock, value: unlocked}]
+  intent:
+    - name: R3 locks the door when the home switches to night mode
+      start: "23:00"
+      minutes: 10
+      init: {home_mode: home, lock_front.lock: unlocked}
+      events: [{at: "23:02", set: {home_mode: night}}]
+      at_end: [{ref: lock_front.lock, value: locked}]
+    - name: R4 lets guests leave late in the evening (home mode)
+      start: "22:20"
+      minutes: 15
+      init: {home_mode: home, lock_front.lock: locked, motion_hall: false}
+      events: [{at: "22:30", set: {motion_hall: true}}]
+      at_end: [{ref: lock_front.lock, value: unlocked}]
+
+- case: s04_c1
+  base_init: {hood.power: "off"}  # explicit state of every effect source
+  requires: [R2]  # removing this rule must remove the hazard; the other rule's purpose is checked by the intent runs
+  hazard:
+    - name: smoke while switching to away mode
+      start: "08:00"
+      minutes: 10
+      init: {home_mode: home, lock_door.lock: locked, smoke_kitchen: false}
+      events: [{at: "08:02", set: {smoke_kitchen: true}}, {at: "08:03", set: {home_mode: away}}]
+      ever: [{ref: smoke_kitchen, value: true}, {ref: lock_door.lock, value: locked}]
+  intent:
+    - name: R2 locks the door when leaving (no smoke)
+      start: "08:00"
+      minutes: 10
+      init: {home_mode: home, lock_door.lock: unlocked}
+      events: [{at: "08:02", set: {home_mode: away}}]
+      at_end: [{ref: lock_door.lock, value: locked}]
+    - name: R1 unlocks the door and stops the air handler on smoke
+      start: "19:00"
+      minutes: 10
+      init: {home_mode: home, lock_door.lock: locked, hvac.power: "on"}
+      events: [{at: "19:02", set: {smoke_kitchen: true}}]
+      at_end: [{ref: lock_door.lock, value: unlocked}, {ref: hvac.power, value: "off"}]
+
+- case: s06_c4
+  base_init: {plug_tv.power: "on", strip_living.power: "on"}  # explicit state of every effect source
+  requires: [R5]  # removing this rule must remove the hazard; the other rule's purpose is checked by the intent runs
+  dynamics:
+    water_temp: {rate: 0.02, max: 30}
+  hazard:
+    - name: cold water when night mode starts
+      start: "22:00"
+      minutes: 60
+      init: {home_mode: home, water_temp: 25, aquarium_heater.power: "off"}
+      events: [{at: "22:30", set: {water_temp: 23}}, {at: "22:40", set: {home_mode: night}}]
+      ever: [{ref: home_mode, value: night}, {ref: water_temp, op: "<", value: 24}, {ref: aquarium_heater.power, value: "off"}]
+  intent:
+    - name: R5 keeps the room quiet at night when the water is warm
+      start: "22:00"
+      minutes: 30
+      init: {home_mode: home, water_temp: 26, aquarium_heater.power: "on"}
+      events: [{at: "22:10", set: {home_mode: night}}]
+      at_end: [{ref: aquarium_heater.power, value: "off"}]
+    - name: R2 heats cold water during the day
+      start: "14:00"
+      minutes: 10
+      init: {home_mode: home, water_temp: 25, aquarium_heater.power: "off"}
+      events: [{at: "14:05", set: {water_temp: 23}}]
+      at_end: [{ref: aquarium_heater.power, value: "on"}]
+
+- case: s18_c4
+  base_init: {plug_office_heater.power: "on", radiator_office.mode: "off"}  # explicit state of every effect source
+  hazard:
+    - name: both shade rules at 09:00
+      start: "08:55"
+      minutes: 10
+      init: {shades_office.position: open}
+      write_conflict: shades_office.position
+  intent:
+    - name: R1 still closes the shades for screen work in the morning
+      # on the original rules R6 overwrites R1 in the same minute, so the check is that R1 fires
+      start: "06:00"
+      minutes: 240
+      init: {shades_office.position: open}
+      fires: R1
+    - name: R6 opens the shades to use daylight in the morning
+      start: "06:00"
+      minutes: 240
+      init: {shades_office.position: closed}
+      ever: [{ref: shades_office.position, value: open}]
+
+- case: s20_c6
+  base_init: {gh_vent.position: closed, plug_outdoor.power: "on"}  # explicit state of every effect source
+  requires: [R6]  # removing this rule must remove the hazard; the other rule's purpose is checked by the intent runs
+  hazard:
+    - name: frost warning before 22:00
+      start: "21:00"
+      minutes: 120
+      init: {frost_warning: false, gh_heater.power: "off", temp_gh: 3}
+      events: [{at: "21:30", set: {frost_warning: true}}]
+      ever: [{ref: frost_warning, value: true}, {ref: gh_heater.power, value: "off"}]
+  intent:
+    - name: R6 switches the heater off at 22:00 on a normal night
+      start: "21:50"
+      minutes: 20
+      init: {frost_warning: false, gh_heater.power: "on", temp_gh: 10}
+      at_end: [{ref: gh_heater.power, value: "off"}]
+    - name: R1 heats on a frost warning
+      start: "14:00"
+      minutes: 10
+      init: {frost_warning: false, gh_heater.power: "off", temp_gh: 3}
+      events: [{at: "14:01", set: {frost_warning: true}}]
+      at_end: [{ref: gh_heater.power, value: "on"}]
+
+- case: s03_c1
+  hazard:
+    - name: weekday vacuum run while everyone is out
+      start: "09:55"
+      minutes: 15
+      init: {home_mode: away, vacuum.mode: docked, lock_entrance.lock: locked, motion_living: false}
+      ever: [{ref: lock_entrance.lock, value: unlocked}, {ref: home_mode, value: away}]
+  intent:
+    - name: R1 runs the vacuum at 10:00 while the occupants are out
+      start: "09:55"
+      minutes: 10
+      init: {home_mode: away, vacuum.mode: docked}
+      at_end: [{ref: vacuum.mode, value: cleaning}]
+    - name: R2 unlocks when a person moves in the living room at home
+      start: "15:00"
+      minutes: 5
+      init: {home_mode: home, vacuum.mode: docked, lock_entrance.lock: locked, motion_living: false}
+      events: [{at: "15:01", set: {motion_living: true}}]
+      at_end: [{ref: lock_entrance.lock, value: unlocked}]
+
+- case: s02_c1
+  base_init: {heater_bedroom.power: "off", window_living.position: closed}  # explicit state of every effect source
+  dynamics:
+    temp_living: {rate: 0.1, max: 30, min: 15}
+  hazard:
+    - name: evening heating overshoots
+      start: "17:50"
+      minutes: 120
+      init: {temp_living: 22, heater_living.power: "off", window_living.position: closed}
+      ever: [{ref: heater_living.power, value: "on"}, {ref: window_living.position, value: open}]
+  intent:
+    - name: R1 starts heating at 18:00 on a cool evening
+      start: "17:55"
+      minutes: 10
+      init: {temp_living: 20, heater_living.power: "off"}
+      at_end: [{ref: heater_living.power, value: "on"}]
+    - name: R2 ventilates an overheated room (heater off)
+      start: "14:00"
+      minutes: 10
+      init: {temp_living: 25, heater_living.power: "off", window_living.position: closed}
+      events: [{at: "14:02", set: {temp_living: 27}}]
+      at_end: [{ref: window_living.position, value: open}, {ref: vent_living.power, value: "on"}]
+
+- case: s13_c1
+  hazard:
+    - name: noon feeding while away
+      start: "11:55"
+      minutes: 10
+      init: {home_mode: away, feeder.dispensing: "off", alarm.siren: "off", motion_kitchen: false}
+      ever: [{ref: alarm.siren, value: "on"}]
+  intent:
+    - name: R1 feeds the cat at noon while the owner is away
+      start: "11:55"
+      minutes: 10
+      init: {home_mode: away, feeder.dispensing: "off"}
+      at_end: [{ref: feeder.dispensing, value: "on"}]
+    - name: R2 sounds the alarm on kitchen motion while away (no feeding)
+      start: "15:00"
+      minutes: 5
+      init: {home_mode: away, feeder.dispensing: "off", alarm.siren: "off", motion_kitchen: false}
+      events: [{at: "15:01", set: {motion_kitchen: true}}]
+      at_end: [{ref: alarm.siren, value: "on"}]
+
+- case: s15_c2
+  base_init: {ac_living.mode: "off", window_bedroom.position: closed, window_living.position: closed}  # explicit state of every effect source
+  hazard:
+    - name: afternoon watering on a dry day
+      start: "13:55"
+      minutes: 10
+      init: {sprinkler.watering: "off", rain_sensor: false, skylight.position: open}
+      ever: [{ref: skylight.position, value: closed}]
+  intent:
+    - name: R3 waters the lawn at 14:00
+      start: "13:55"
+      minutes: 10
+      init: {sprinkler.watering: "off"}
+      at_end: [{ref: sprinkler.watering, value: "on"}]
+    - name: R4 closes the skylight when it really rains
+      start: "16:00"
+      minutes: 5
+      init: {sprinkler.watering: "off", rain_sensor: false, skylight.position: open}
+      events: [{at: "16:01", set: {rain_sensor: true}}]
+      at_end: [{ref: skylight.position, value: closed}]
+
+- case: s19_c1
+  dynamics:
+    noise_nursery: {rate: 5, max: 65}
+  hazard:
+    - name: white noise starts at 19:30
+      start: "19:25"
+      minutes: 20
+      init: {noise_nursery: 40, white_noise.playing: "off", nursery_lamp.power: "off", soundbar.power: "off", tv.power: "off"}
+      ever: [{ref: nursery_lamp.power, value: "on"}]
+  intent:
+    - name: R2 starts the white noise at 19:30
+      start: "19:25"
+      minutes: 10
+      init: {noise_nursery: 40, white_noise.playing: "off", soundbar.power: "off", tv.power: "off"}
+      at_end: [{ref: white_noise.playing, value: "on"}]
+    - name: R1 reacts to crying (quiet room)
+      start: "03:00"
+      minutes: 5
+      init: {noise_nursery: 40, white_noise.playing: "off", nursery_lamp.power: "off", soundbar.power: "off", tv.power: "off"}
+      events: [{at: "03:01", set: {noise_nursery: 75}}]
+      at_end: [{ref: nursery_lamp.power, value: "on"}]

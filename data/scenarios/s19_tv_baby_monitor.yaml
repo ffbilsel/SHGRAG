@@ -1,5 +1,7 @@
 id: s19_tv_baby_monitor
-name: Family flat - noise and baby monitor
+name: Top-floor flat
+split: dev
+family: tv_baby_monitor
 description: Sound-triggered nursery routines and living room entertainment devices.
 rooms: [living_room, nursery, home]
 devices:
@@ -70,12 +72,16 @@ cases:
     label: conflict
     type: semantic
     justification: The white noise is loud enough for the baby monitor to read it as crying, switching the lamp on and waking the baby.
+    situation: "From 19:30, when the white-noise speaker plays in the nursery."
+    undesired_outcome: "The noise pushes the sound level above 60 dB; R1 treats it as crying and turns on the lamp, which may wake the baby."
     key_nodes: [white_noise, noise_nursery]
   - id: s19_c2
     rules: [R3, R1]
     label: conflict
     type: semantic
     justification: The soundbar's noise carries through the wall into the nursery and triggers the crying routine.
+    situation: "The TV is turned on after 20:00 and the soundbar plays."
+    undesired_outcome: "Soundbar noise carries into the nursery, exceeds 60 dB and R1 switches the nursery lamp on (false crying detection)."
     key_nodes: [soundbar, noise_nursery]
   - id: s19_c3
     rules: [R4, R2]

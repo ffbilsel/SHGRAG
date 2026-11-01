@@ -1,0 +1,191 @@
+id: s18_shades_solar
+name: Duplex apartment
+description: Exterior shades, a radiator valve and a desk heater in the home office.
+rooms:
+- office
+- home
+devices:
+- id: shades_office
+  type: exterior_shades
+  room: office
+  description: Exterior venetian shades
+  states:
+    position:
+    - open
+    - closed
+- id: radiator_office
+  type: radiator_valve
+  room: office
+  description: Smart thermostatic radiator valve
+  states:
+    mode:
+    - heat
+    - 'off'
+- id: desk_heater
+  type: space_heater
+  room: office
+  description: Under-desk heater
+  states:
+    power:
+    - 'on'
+    - 'off'
+- id: plug_office_heater
+  type: smart_plug
+  room: office
+  description: Smart plug near the desk
+  states:
+    power:
+    - 'on'
+    - 'off'
+environment:
+- id: temp_office
+  room: office
+  kind: numeric
+  description: Office temperature (C)
+  values: []
+- id: home_mode
+  room: home
+  kind: categorical
+  description: Household mode
+  values:
+  - home
+  - away
+  - night
+effects:
+- source: shades_office.position
+  when: closed
+  target: temp_office
+  effect: decrease
+  kind: environmental
+  description: Closed shades block winter solar gains
+- source: radiator_office.mode
+  when: heat
+  target: temp_office
+  effect: increase
+  kind: environmental
+  description: The radiator heats the office
+- source: plug_office_heater.power
+  when: 'off'
+  target: desk_heater.power
+  effect: set
+  value: 'off'
+  kind: physical
+  description: The desk heater is plugged into the desk plug
+rules:
+- id: R1
+  text: At 09:00 close the office shades for screen work.
+  trigger:
+    type: time
+    at: 09:00
+    op: ==
+  conditions: []
+  actions:
+  - ref: shades_office.position
+    value: closed
+- id: R2
+  text: When the office is colder than 20 C, open the radiator valve.
+  trigger:
+    type: env
+    ref: temp_office
+    op: <
+    value: 20
+  conditions: []
+  actions:
+  - ref: radiator_office.mode
+    value: heat
+- id: R3
+  text: When the home switches to away mode, turn off the desk plug.
+  trigger:
+    type: env
+    ref: home_mode
+    op: ==
+    value: away
+  conditions: []
+  actions:
+  - ref: plug_office_heater.power
+    value: 'off'
+- id: R4
+  text: When the office is warmer than 24 C, close the radiator valve.
+  trigger:
+    type: env
+    ref: temp_office
+    op: '>'
+    value: 24
+  conditions: []
+  actions:
+  - ref: radiator_office.mode
+    value: 'off'
+- id: R5
+  text: When the home switches to away mode, turn off the desk heater.
+  trigger:
+    type: env
+    ref: home_mode
+    op: ==
+    value: away
+  conditions: []
+  actions:
+  - ref: desk_heater.power
+    value: 'off'
+- id: R6
+  text: At 09:00 open the office shades to use daylight.
+  trigger:
+    type: time
+    at: 08:00
+    op: ==
+  conditions: []
+  actions:
+  - ref: shades_office.position
+    value: open
+cases:
+- id: s18_c1
+  rules:
+  - R1
+  - R2
+  label: conflict
+  type: semantic
+  justification: Closing the shades removes solar gain, the office cools below 20
+    C and the radiator heating starts - energy is wasted.
+  situation: 'A cool day: R1 closes the shades at 09:00 and solar gain is lost.'
+  undesired_outcome: The office cools below 20 C and R2 starts the radiator; heating
+    replaces free solar gain (energy waste).
+  key_nodes:
+  - shades_office
+  - temp_office
+  hard: false
+- id: s18_c2
+  rules:
+  - R2
+  - R4
+  label: clean
+  justification: Heat below 20 C and stop above 24 C is a normal hysteresis band.
+  situation: 'Near miss: Opposite radiator actions under non-overlapping thresholds.'
+  key_nodes: []
+  hard: true
+- id: s18_c3
+  rules:
+  - R3
+  - R5
+  label: clean
+  justification: Both rules turn the desk heater off when away (one directly, one
+    via its plug) - consistent, not conflicting.
+  situation: 'Near miss: Two away-mode rules act on the desk heater, but both turn
+    it off.'
+  key_nodes: []
+  hard: true
+- id: s18_c4
+  rules:
+  - R1
+  - R6
+  label: conflict
+  type: logical
+  justification: Both rules fire at 09:00 and command opposite shade positions.
+  situation: At 09:00 every day.
+  undesired_outcome: R1 closes and R6 opens the same shades at the same time; the
+    final position depends on execution order.
+  key_nodes:
+  - shades_office
+  hard: false
+split: dev
+family: shades_solar
+home_conflicts: []
+home_clean_notes: {}

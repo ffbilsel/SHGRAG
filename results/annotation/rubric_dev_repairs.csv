@@ -1,0 +1,121 @@
+split,condition,case_id,stratum,gt_label,gt_type,gt_situation,gt_outcome,gt_justification,rules,pred_conflict,pred_type,explanation,evidence,repair,auto_verdict,E1_direction,E2_steps,E3_timing,E4_no_assumption,E5_outcome,R1_applicable,R2_resolves,R3_preserves,R4_safe,notes,item
+dev,repair:graph,s01_c1,repair,conflict,physical,"Home is in away mode at or after 23:00, when R1 switches the hallway plug off.",The hallway camera loses power and does not record the front door while nobody is home.,"R1 cuts power to the hallway plug, which powers the camera R2 relies on for away-mode recording.","R1: At 23:00 turn off the hallway smart plug to save energy. | R2: When the home is set to away mode, start recording on the hallway camera.",True,physical,"The hallway camera gets its power through the hallway plug, so R1 should not switch the plug off while the home is in away mode. That keeps the camera on so R2 can record the front door. On every other night, R1 still turns the plug off at 23:00 to save energy.",graph path: R1 -> plug_hall.power -> camera_hall.power -> camera_hall -> camera_hall.recording -> R2 -> home_mode,"- R1: ""At 23:00 turn off the hallway smart plug to save energy.""
+  trigger: time == 23:00
+  conditions: none
+  actions: plug_hall.power := off
++ R1: ""At 23:00 turn off the hallway smart plug to save energy.""
+  trigger: time == 23:00
+  conditions: home_mode != away
+  actions: plug_hall.power := off",success=True resolved=True intent=True no_new=True attempts=1,NA,NA,NA,NA,NA,,,,,,0
+dev,repair:graph,s01_c2,repair,conflict,logical,Home is in night mode and the hallway motion sensor fires between 22:00 and 06:00.,R4 unlocks the front door that R3 locked for the night; the door stays unlocked at night.,In night mode R3 locks the door while hallway motion at night makes R4 unlock it.,"R3: When the home switches to night mode, lock the front door. | R4: When motion is detected in the hallway between 22:00 and 06:00, unlock the front door so guests can leave.",True,logical,"R4 now unlocks the front door on hallway motion only when the home is not in night mode, so it can no longer undo R3's night-mode lock. R3's security function stays intact, and R4 still lets guests leave late in the evening when night mode has not been set.",graph path: R4 -> lock_front.lock -> R3 -> home_mode,"- R4: ""When motion is detected in the hallway between 22:00 and 06:00, unlock the front door so guests can leave.""
+  trigger: motion_hall == True
+  conditions: time in [22:00, 06:00]
+  actions: lock_front.lock := unlocked
++ R4: ""When motion is detected in the hallway between 22:00 and 06:00, unlock the front door so guests can leave.""
+  trigger: motion_hall == True
+  conditions: time in [22:00, 06:00]; home_mode != night
+  actions: lock_front.lock := unlocked",success=True resolved=True intent=True no_new=True attempts=1,NA,NA,NA,NA,NA,,,,,,1
+dev,repair:graph,s02_c1,repair,conflict,semantic,R1 turns the living-room heater on at 18:00 and the room warms above 26 C.,R2 opens the window and starts the fan while the heater is still heating: energy is wasted and the room is heated and vented at once.,"The heater raises the living room temperature, which fires R2 and opens the window while still heating.","R1: At 18:00 turn on the living room heater. | R2: When the living room temperature rises above 26 C, turn on the ventilation fan and open the window.",True,semantic,"When the living room goes above 26 C, R2 now also turns the heater off, so the room is never heated and ventilated at the same time. R1 still turns the heater on at 18:00 in normal conditions, and R2 still cools an overheated room. R4 can still turn the heater back on below 19 C, so heating is not disabled.",graph path: R2 -> temp_living -> heater_living.power -> R1,"- R2: ""When the living room temperature rises above 26 C, turn on the ventilation fan and open the window.""
+  trigger: temp_living > 26
+  conditions: none
+  actions: vent_living.power := on; window_living.position := open
++ R2: ""When the living room temperature rises above 26 C, turn on the ventilation fan and open the window.""
+  trigger: temp_living > 26
+  conditions: none
+  actions: vent_living.power := on; window_living.position := open; heater_living.power := off",success=True resolved=True intent=True no_new=True attempts=1,NA,NA,NA,NA,NA,,,,,,2
+dev,repair:graph,s03_c1,repair,conflict,semantic,The robot vacuum starts at 10:00 on a weekday while the occupants are out.,The vacuum's movement triggers the living-room motion sensor and R2 unlocks the entrance door of an empty home.,"The vacuum triggers the living room motion sensor, so R2 unlocks the door while nobody is home.","R1: At 10:00 on weekdays start the robot vacuum. | R2: When motion is detected in the living room, unlock the entrance door (someone is home).",True,semantic,"R2 is meant to unlock only when someone is home. With the new condition, the vacuum's movement while the house is empty (away mode) can no longer unlock the door. R2 still unlocks on living-room motion when occupants are home, and R1 still starts the vacuum on schedule.",graph path: R2 -> motion_living -> vacuum.mode -> R1,"- R2: ""When motion is detected in the living room, unlock the entrance door (someone is home).""
+  trigger: motion_living == True
+  conditions: none
+  actions: lock_entrance.lock := unlocked
++ R2: ""When motion is detected in the living room, unlock the entrance door (someone is home).""
+  trigger: motion_living == True
+  conditions: home_mode != away
+  actions: lock_entrance.lock := unlocked",success=True resolved=True intent=True no_new=True attempts=1,NA,NA,NA,NA,NA,,,,,,3
+dev,repair:graph,s04_c1,repair,conflict,logical,Smoke is detected in the kitchen while (or just after) the home switches to away mode.,R1 unlocks the door for evacuation and R2 locks it; the evacuation route may end up locked.,"If smoke appears while the home is switched to away, R1 unlocks for evacuation while R2 locks the door.","R1: When smoke is detected in the kitchen, unlock the apartment door for evacuation and turn off the air handler. | R2: When the home switches to away mode, lock the apartment door.",True,logical,"R2 now locks the door on away mode only when there is no kitchen smoke, so it can no longer cancel R1's safety unlock for evacuation. Outside a smoke event, R2 still locks the door when the home goes to away mode, and R1 stays the same.",graph path: R2 -> lock_door.lock -> R1 -> smoke_kitchen,"- R2: ""When the home switches to away mode, lock the apartment door.""
+  trigger: home_mode == away
+  conditions: none
+  actions: lock_door.lock := locked
++ R2: ""When the home switches to away mode, lock the apartment door.""
+  trigger: home_mode == away
+  conditions: smoke_kitchen == False
+  actions: lock_door.lock := locked",success=True resolved=True intent=True no_new=True attempts=1,NA,NA,NA,NA,NA,,,,,,4
+dev,repair:graph,s05_c1,repair,conflict,physical,"Home is in night mode after 00:30, when R1 has turned the office plug off.","The router loses power, so the garden camera cannot upload recordings to the cloud overnight.","Turning off the office plug kills the router, so the garden camera cannot upload during the night (two-hop dependency).","R1: At 00:30 turn off the office plug (standby power saving). | R2: When the home is in night mode, enable cloud upload on the garden camera.",True,physical,"The router is plugged into the office plug. With this condition, R1 skips the 00:30 shut-off when the home is in night mode, so the router keeps power and the garden camera can still upload to the cloud as R2 needs. In any other mode, R1 still turns the plug off at 00:30 to save standby power.",graph path: R1 -> plug_office.power -> router.power -> camera_garden.cloud_upload -> R2,"- R1: ""At 00:30 turn off the office plug (standby power saving).""
+  trigger: time == 00:30
+  conditions: none
+  actions: plug_office.power := off
++ R1: ""At 00:30 turn off the office plug (standby power saving).""
+  trigger: time == 00:30
+  conditions: home_mode != night
+  actions: plug_office.power := off",success=True resolved=True intent=True no_new=True attempts=1,NA,NA,NA,NA,NA,,,,,,5
+dev,repair:graph,s06_c4,repair,conflict,logical,Home is in night mode and the water temperature falls below 24 C.,R5 switches the aquarium heater off while R2 switches it on; the heater state flips and the water may stay cold.,At night R5 switches the aquarium heater off while R2 switches it on whenever the water is cold.,"R5: When the home switches to night mode, turn off the aquarium heater to keep the room quiet. | R2: When the aquarium water temperature falls below 24 C, turn on the aquarium heater.",True,logical,"With this change, R5 only turns the heater off for quiet nights when the water is already at 24 C or warmer. So it can no longer switch the heater off while R2 is turning it on for cold water. R2 still protects the fish at all times, and R5 still keeps nights quiet whenever the water is warm enough.",graph path: R5 -> aquarium_heater.power -> R2 -> water_temp,"- R5: ""When the home switches to night mode, turn off the aquarium heater to keep the room quiet.""
+  trigger: home_mode == night
+  conditions: none
+  actions: aquarium_heater.power := off
++ R5: ""When the home switches to night mode, turn off the aquarium heater to keep the room quiet.""
+  trigger: home_mode == night
+  conditions: water_temp >= 24
+  actions: aquarium_heater.power := off",success=True resolved=True intent=True no_new=True attempts=1,NA,NA,NA,NA,NA,,,,,,6
+dev,repair:graph,s12_c1,repair,conflict,physical,Home is in away mode (garage breaker off) and carbon monoxide is detected in the garage.,R2 cannot start the exhaust fan because its circuit is off; the CO safety response is lost.,"With the garage circuit off while away, the CO response cannot start the exhaust fan (safety function lost).","R1: When the home switches to away mode, switch off the garage circuit breaker. | R2: When carbon monoxide is detected in the garage, turn on the exhaust fan and open the garage door.",True,physical,"When CO is detected, R2 now switches the garage breaker back on, so the exhaust fan has power even if R1 cut the circuit for away mode. R1 still turns off the garage circuit every time the home goes into away mode. It is only overridden when there is a CO emergency, so the safety function stays intact.",graph path: R2 -> fan_garage.power -> breaker_garage.power -> R1,"- R2: ""When carbon monoxide is detected in the garage, turn on the exhaust fan and open the garage door.""
+  trigger: co_garage == True
+  conditions: none
+  actions: fan_garage.power := on; garage_door.position := open
++ R2: ""When carbon monoxide is detected in the garage, turn on the exhaust fan and open the garage door.""
+  trigger: co_garage == True
+  conditions: none
+  actions: fan_garage.power := on; garage_door.position := open; breaker_garage.power := on",success=True resolved=True intent=True no_new=True attempts=1,NA,NA,NA,NA,NA,,,,,,7
+dev,repair:graph,s13_c1,repair,conflict,semantic,At 12:00 while the home is in away mode.,"The feeder attracts the cat into the kitchen, its motion triggers R2 and the siren sounds (false alarm every noon).",Feeding attracts the cat into the kitchen; its motion sets off the away-mode alarm every noon.,"R1: At 12:00 dispense food for the cat. | R2: When motion is detected in the kitchen while the home is in away mode, sound the alarm.",True,semantic,"When R1 turns the feeder on, the cat's movement in the kitchen triggers R2. With this condition R2 stays quiet while the feeder is dispensing, so the noon feeding no longer sets off the siren. The cat is still fed every day, and R2 still sounds the alarm for kitchen motion while away at all other times. R5 keeps watching the living room the whole time.",graph path: R2 -> motion_kitchen -> feeder.dispensing -> R1,"- R2: ""When motion is detected in the kitchen while the home is in away mode, sound the alarm.""
+  trigger: motion_kitchen == True
+  conditions: home_mode == away
+  actions: alarm.siren := on
++ R2: ""When motion is detected in the kitchen while the home is in away mode, sound the alarm.""
+  trigger: motion_kitchen == True
+  conditions: home_mode == away; feeder.dispensing == off
+  actions: alarm.siren := on",success=True resolved=True intent=True no_new=True attempts=2,NA,NA,NA,NA,NA,,,,,,8
+dev,repair:graph,s14_c1,repair,conflict,physical,Night mode is active at 23:30.,R1 turns off the bedside plug that actually powers the CPAP machine; a medical device stops during sleep.,The 'phone charger' plug actually powers the CPAP machine; switching it off at 23:30 stops a medical device.,"R1: At 23:30 turn off the bedside plug (phone charger) to save energy. | R2: When the home switches to night mode, make sure the CPAP machine is on.",True,physical,"R1 will no longer cut power to the bedside plug when night mode is on. That plug powers the CPAP, which R2 keeps on, so the medical device keeps running during sleep. When the home is not in night mode, R1 still turns the plug off at 23:30 to save energy, and R2 does not change.",graph path: R1 -> plug_bedside.power -> cpap.power -> R2 -> home_mode,"- R1: ""At 23:30 turn off the bedside plug (phone charger) to save energy.""
+  trigger: time == 23:30
+  conditions: none
+  actions: plug_bedside.power := off
++ R1: ""At 23:30 turn off the bedside plug (phone charger) to save energy.""
+  trigger: time == 23:30
+  conditions: home_mode != night
+  actions: plug_bedside.power := off",success=True resolved=True intent=True no_new=True attempts=1,NA,NA,NA,NA,NA,,,,,,9
+dev,repair:graph,s15_c2,repair,conflict,semantic,"At 14:00 on a dry, sunny day.",The sprinkler wets the rain sensor and R4 closes the skylight although it is not raining (false rain).,"The sprinkler wets the rain sensor, closing the skylight on a sunny day (false rain).","R3: At 14:00 water the lawn. | R4: When rain is detected, close the bedroom skylight.",True,semantic,"The sprinkler spray sets off the terrace rain sensor. With this condition, R4 only closes the skylight when the sensor reports rain and the sprinkler is not running, so the 14:00 watering no longer causes a false rain reaction. R3 still waters the lawn as scheduled, and R4 still closes the skylight on real rain whenever the sprinkler is off.",graph path: R4 -> rain_sensor -> sprinkler.watering -> R3,"- R4: ""When rain is detected, close the bedroom skylight.""
+  trigger: rain_sensor == True
+  conditions: none
+  actions: skylight.position := closed
++ R4: ""When rain is detected, close the bedroom skylight.""
+  trigger: rain_sensor == True
+  conditions: sprinkler.watering == off
+  actions: skylight.position := closed",success=True resolved=True intent=True no_new=True attempts=1,NA,NA,NA,NA,NA,,,,,,10
+dev,repair:graph,s16_c2,repair,conflict,physical,Night mode is active and the closet becomes warmer than 35 C (e.g. during a backup).,"The cooling fan is on the strip that R2 switched off, so R3 cannot cool the closet; equipment may overheat.","The cooling fan is on the same strip, so overheating protection cannot work at night.","R2: When the home switches to night mode, turn off the closet power strip. | R3: When the closet is warmer than 35 C, turn on the cooling fan.",True,physical,"The fan is plugged into the closet strip that R2 turns off. When R3 fires on overheating, it now also turns the strip back on, so the fan gets power and the closet can cool. R2 still turns the strip off whenever night mode starts, and only an overheating closet overrides it.",graph path: R3 -> fan_closet.power -> strip_closet.power -> R2,"- R3: ""When the closet is warmer than 35 C, turn on the cooling fan.""
+  trigger: temp_closet > 35
+  conditions: none
+  actions: fan_closet.power := on
++ R3: ""When the closet is warmer than 35 C, turn on the cooling fan.""
+  trigger: temp_closet > 35
+  conditions: none
+  actions: fan_closet.power := on; strip_closet.power := on",success=True resolved=True intent=True no_new=True attempts=1,NA,NA,NA,NA,NA,,,,,,11
+dev,repair:graph,s18_c4,repair,conflict,logical,At 09:00 every day.,R1 closes and R6 opens the same shades at the same time; the final position depends on execution order.,Both rules fire at 09:00 and command opposite shade positions.,R1: At 09:00 close the office shades for screen work. | R6: At 09:00 open the office shades to use daylight.,True,logical,"Moving R6's daylight opening to 08:00 means the two rules no longer write opposite values to shades_office.position at the same moment, so the result no longer depends on execution order. R6 still lets in morning daylight, and R1 still closes the shades for screen work at 09:00. No other rule controls the shades.",graph path: R6 -> shades_office.position -> R1,"- R6: ""At 09:00 open the office shades to use daylight.""
+  trigger: time == 09:00
+  conditions: none
+  actions: shades_office.position := open
++ R6: ""At 09:00 open the office shades to use daylight.""
+  trigger: time == 08:00
+  conditions: none
+  actions: shades_office.position := open",success=True resolved=True intent=True no_new=True attempts=1,NA,NA,NA,NA,NA,,,,,,12
+dev,repair:graph,s19_c1,repair,conflict,semantic,"From 19:30, when the white-noise speaker plays in the nursery.","The noise pushes the sound level above 60 dB; R1 treats it as crying and turns on the lamp, which may wake the baby.","The white noise is loud enough for the baby monitor to read it as crying, switching the lamp on and waking the baby.","R2: At 19:30 start the white-noise speaker in the nursery. | R1: When the nursery sound level exceeds 60 dB (baby crying), turn on the nursery lamp at low brightness.",True,semantic,"R2's white noise raises the nursery sound level, and R1 mistakes that for crying. Making R1 run only when the white-noise speaker is off means the speaker can no longer turn on the lamp. R2 still starts the white noise at 19:30, and R1 still responds to crying whenever the speaker is off.",graph path: R1 -> noise_nursery -> white_noise.playing -> R2,"- R1: ""When the nursery sound level exceeds 60 dB (baby crying), turn on the nursery lamp at low brightness.""
+  trigger: noise_nursery > 60
+  conditions: none
+  actions: nursery_lamp.power := on
++ R1: ""When the nursery sound level exceeds 60 dB (baby crying), turn on the nursery lamp at low brightness.""
+  trigger: noise_nursery > 60
+  conditions: white_noise.playing == off
+  actions: nursery_lamp.power := on",success=True resolved=True intent=True no_new=True attempts=1,NA,NA,NA,NA,NA,,,,,,13
+dev,repair:graph,s20_c6,repair,conflict,logical,A frost warning is active at 22:00.,R1 keeps the greenhouse heater on while R6 switches it off; frost protection depends on execution order.,During a frost warning R1 keeps the heater on while R6 switches it off at 22:00.,"R1: When a frost warning is issued, turn on the greenhouse heater. | R6: At 22:00 turn off the greenhouse heater.",True,logical,"R6 now turns the heater off at 22:00 only when no frost warning is active. During a frost warning, R1 keeps the heater on and the greenhouse stays protected. On all other nights, R6 still saves energy by turning the heater off.",graph path: R6 -> gh_heater.power -> R1 -> frost_warning,"- R6: ""At 22:00 turn off the greenhouse heater.""
+  trigger: time == 22:00
+  conditions: none
+  actions: gh_heater.power := off
++ R6: ""At 22:00 turn off the greenhouse heater.""
+  trigger: time == 22:00
+  conditions: frost_warning == False
+  actions: gh_heater.power := off",success=True resolved=True intent=True no_new=True attempts=1,NA,NA,NA,NA,NA,,,,,,14

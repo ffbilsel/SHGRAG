@@ -1,0 +1,14 @@
+{
+  "frozen_on": "2026-11-01",
+  "prompt_fingerprint": "fe934e5cdef37b88",
+  "homes": {
+    "t01_basement_sump": "751921baaef8f99e4e72231ba97f85b870187f32dbbe0b651824695ff9cd7801",
+    "t02_media_room": "c7322dca900f611fd745de3439b1044c1a8f7e0cac079219f30f4d48e88e3c0d",
+    "t03_steam_shower": "c90c792a8a0ac71fee1763482228104c08e785ad3c26f4568bbd08e15617e2fa",
+    "t04_pool": "0b7556cf48f6a6c3c0e42f60a9b4ba58ac78a20209b5e0beca8eeb925676f5ae",
+    "t05_mode_chain": "20a12abc98fed245c21478c54cb72dbc6a6b25de5527e68dab69b3ac21e8b28b",
+    "t06_bedroom_ventilation": "7de8b96c84fce4f187c4cac7328a44ebc37e48e460498e4fe02f0bbea7666707",
+    "t07_driveway": "8498a0642d53796967c1430e535af6b8f2557cfc2aacf43c9f6c7094fc1437bf",
+    "t08_awning": "1c61bb538684ca97d56d9dca3ca584e3e925fa3a77de283e52dbb0514a23afcc"
+  }
+}

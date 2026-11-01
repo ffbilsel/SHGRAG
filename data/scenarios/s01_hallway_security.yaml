@@ -1,5 +1,7 @@
 id: s01_hallway_security
-name: City apartment - hallway security
+name: City apartment
+split: dev
+family: hallway_security
 description: Two-room apartment with a smart lock, a plug-powered hallway camera and a lamp.
 rooms: [hallway, living_room, home]
 devices:
@@ -69,12 +71,16 @@ cases:
     label: conflict
     type: physical
     justification: R1 cuts power to the hallway plug, which powers the camera R2 relies on for away-mode recording.
+    situation: "Home is in away mode at or after 23:00, when R1 switches the hallway plug off."
+    undesired_outcome: "The hallway camera loses power and does not record the front door while nobody is home."
     key_nodes: [plug_hall, camera_hall]
   - id: s01_c2
     rules: [R3, R4]
     label: conflict
     type: logical
     justification: In night mode R3 locks the door while hallway motion at night makes R4 unlock it.
+    situation: "Home is in night mode and the hallway motion sensor fires between 22:00 and 06:00."
+    undesired_outcome: "R4 unlocks the front door that R3 locked for the night; the door stays unlocked at night."
     key_nodes: [lock_front]
   - id: s01_c3
     rules: [R5, R2]
@@ -84,3 +90,5 @@ cases:
     rules: [R1, R3]
     label: clean
     justification: The hallway plug does not power the lock; locking at night is unaffected.
+    situation: "Near miss: R1 cuts a plug at night, but that plug does not power the lock."
+    hard: true

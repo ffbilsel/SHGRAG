@@ -1,5 +1,7 @@
 id: s20_greenhouse
-name: Garden greenhouse - heating, vents and grow lights
+name: Farmhouse
+split: dev
+family: greenhouse
 description: A small greenhouse with a heater, roof vent, grow lights and a pump on one outdoor circuit.
 rooms: [greenhouse, home]
 devices:
@@ -93,30 +95,42 @@ cases:
     label: conflict
     type: semantic
     justification: Frost heating pushes the greenhouse above 18 C, R2 opens the vent and releases the heat during frost.
+    situation: "A frost warning: R1 heats the greenhouse above 18 C."
+    undesired_outcome: "R2 opens the roof vent during frost and releases the heat; heater and vent fight each other."
     key_nodes: [gh_heater, temp_gh]
   - id: s20_c2
     rules: [R3, R1]
     label: conflict
     type: physical
     justification: The outdoor plug feeds the heater; switching it off at 22:00 disables frost protection overnight.
+    situation: "A frost warning is active at or after 22:00."
+    undesired_outcome: "R3 cuts the outdoor plug that feeds the greenhouse heater; frost protection is lost overnight."
     key_nodes: [plug_outdoor, gh_heater]
   - id: s20_c3
     rules: [R4, R2]
     label: clean
     justification: LED grow lights do not meaningfully affect the greenhouse temperature in this model; no relation to the vent.
+    situation: "Near miss: Grow lights switch on, but they are not modelled as heating the greenhouse."
+    hard: true
   - id: s20_c4
     rules: [R2, R5]
     label: clean
     justification: Open above 18 C, close below 5 C - non-overlapping thresholds.
+    situation: "Near miss: Opposite vent actions under non-overlapping thresholds."
+    hard: true
   - id: s20_c5
     rules: [R1, R2, R3]
     label: conflict
     type: physical
     justification: Three-rule interaction; the dominant hazard is the outdoor plug cutting the frost heater at 22:00.
+    situation: "Frost night: R1 heats, R2 vents above 18 C and R3 cuts the heater's plug at 22:00."
+    undesired_outcome: "Frost protection is lost (plug off) and heat is vented while it runs; plants are exposed to frost."
     key_nodes: [plug_outdoor, gh_heater]
   - id: s20_c6
     rules: [R1, R6]
     label: conflict
     type: logical
     justification: During a frost warning R1 keeps the heater on while R6 switches it off at 22:00.
+    situation: "A frost warning is active at 22:00."
+    undesired_outcome: "R1 keeps the greenhouse heater on while R6 switches it off; frost protection depends on execution order."
     key_nodes: [gh_heater]
